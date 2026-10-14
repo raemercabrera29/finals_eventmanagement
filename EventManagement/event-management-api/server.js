@@ -96,8 +96,6 @@ const __dirname =
 const allowedOrigins = [
   process.env.CLIENT_URL,
 
-  "https://nunified.vercel.app",
-
   "http://localhost:5173",
 
   "http://127.0.0.1:5173",
@@ -110,10 +108,11 @@ app.use(
       callback
     ) => {
       /*
-        Allow requests with no Origin:
+        Allow:
         - Postman
-        - server-to-server
-        - health checks
+        - backend requests
+        - frontend localhost
+        - production frontend
       */
 
       if (!origin) {
@@ -122,10 +121,6 @@ app.use(
           true
         );
       }
-
-      /* ===============================================
-         EXACT ALLOWED ORIGIN
-      =============================================== */
 
       if (
         allowedOrigins.includes(
@@ -138,32 +133,6 @@ app.use(
         );
       }
 
-      /* ===============================================
-         ALLOW NUNIFIED VERCEL PREVIEW DEPLOYMENTS
-
-         Example:
-         https://nunified-abc123-raemer.vercel.app
-      =============================================== */
-
-      const isNunifiedPreview =
-        /^https:\/\/nunified-[a-zA-Z0-9-]+\.vercel\.app$/.test(
-          origin
-        );
-
-      if (
-        isNunifiedPreview
-      ) {
-        return callback(
-          null,
-          true
-        );
-      }
-
-      console.error(
-        "❌ CORS BLOCKED:",
-        origin
-      );
-
       return callback(
         new Error(
           `CORS blocked origin: ${origin}`
@@ -173,30 +142,7 @@ app.use(
 
     credentials:
       true,
-
-    methods: [
-      "GET",
-      "POST",
-      "PUT",
-      "PATCH",
-      "DELETE",
-      "OPTIONS",
-    ],
-
-    allowedHeaders: [
-      "Content-Type",
-      "Authorization",
-    ],
   })
-);
-
-/* =====================================================
-   PREFLIGHT
-===================================================== */
-
-app.options(
-  "*",
-  cors()
 );
 
 /* =====================================================

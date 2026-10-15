@@ -91,15 +91,55 @@ const __dirname =
 
 /* =====================================================
    CORS
+
+   Allows:
+   - Production React frontend
+   - Old NUnified frontend domain if needed
+   - Flutter Web running on localhost on ANY port
+   - Postman / server-to-server requests
 ===================================================== */
 
-const allowedOrigins = [
+const allowedProductionOrigins = [
   process.env.CLIENT_URL,
 
-  "http://localhost:5173",
+  "https://finals-eventmanagement.vercel.app",
 
-  "http://127.0.0.1:5173",
+  "https://nunified.vercel.app",
 ].filter(Boolean);
+
+function isLocalDevelopmentOrigin(
+  origin
+) {
+  if (!origin) {
+    return false;
+  }
+
+  try {
+    const url =
+      new URL(
+        origin
+      );
+
+    const isLocalHost =
+      url.hostname ===
+        "localhost" ||
+      url.hostname ===
+        "127.0.0.1";
+
+    const isAllowedProtocol =
+      url.protocol ===
+        "http:" ||
+      url.protocol ===
+        "https:";
+
+    return (
+      isLocalHost &&
+      isAllowedProtocol
+    );
+  } catch {
+    return false;
+  }
+}
 
 app.use(
   cors({
@@ -108,11 +148,10 @@ app.use(
       callback
     ) => {
       /*
-        Allow:
+        Allow requests without Origin:
         - Postman
         - backend requests
-        - frontend localhost
-        - production frontend
+        - mobile/native clients
       */
 
       if (!origin) {
@@ -122,8 +161,12 @@ app.use(
         );
       }
 
+      /*
+        Production websites
+      */
+
       if (
-        allowedOrigins.includes(
+        allowedProductionOrigins.includes(
           origin
         )
       ) {
@@ -132,6 +175,32 @@ app.use(
           true
         );
       }
+
+      /*
+        Flutter Web / React local development
+
+        Examples:
+        http://localhost:5173
+        http://localhost:49821
+        http://127.0.0.1:3000
+        http://127.0.0.1:54567
+      */
+
+      if (
+        isLocalDevelopmentOrigin(
+          origin
+        )
+      ) {
+        return callback(
+          null,
+          true
+        );
+      }
+
+      console.error(
+        "❌ CORS BLOCKED:",
+        origin
+      );
 
       return callback(
         new Error(
@@ -142,6 +211,20 @@ app.use(
 
     credentials:
       true,
+
+    methods: [
+      "GET",
+      "POST",
+      "PUT",
+      "PATCH",
+      "DELETE",
+      "OPTIONS",
+    ],
+
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+    ],
   })
 );
 

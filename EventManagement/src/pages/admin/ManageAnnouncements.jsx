@@ -75,6 +75,136 @@ function getOrganizationColor(post) {
 }
 
 /* =====================================================
+   ARCHIVE HELPERS
+===================================================== */
+
+function getArchiveItems(data) {
+  if (Array.isArray(data)) {
+    return data;
+  }
+
+  if (Array.isArray(data?.archives)) {
+    return data.archives;
+  }
+
+  if (Array.isArray(data?.items)) {
+    return data.items;
+  }
+
+  if (Array.isArray(data?.posts)) {
+    return data.posts;
+  }
+
+  return [];
+}
+
+function normalizeArchivedPost(item) {
+  const snapshot =
+    item?.snapshot ||
+    item?.announcement ||
+    item?.post ||
+    {};
+
+  const archiveId =
+    item?.archiveId ||
+    item?._id ||
+    "";
+
+  const originalAnnouncementId =
+    item?.originalAnnouncementId ||
+    item?.announcementId ||
+    item?.originalPostId ||
+    snapshot?._id ||
+    "";
+
+  return {
+    ...snapshot,
+    ...item,
+
+    /*
+      Keep the archive document ID separate from the
+      original announcement ID.
+
+      Restore/Delete must use archiveId.
+    */
+    archiveId,
+
+    originalAnnouncementId,
+
+    /*
+      _id is kept as the original announcement ID when
+      available so the UI still behaves like a post.
+    */
+    _id:
+      originalAnnouncementId ||
+      snapshot?._id ||
+      item?._id,
+
+    isArchived: true,
+
+    organization:
+      item?.organization ||
+      snapshot?.organization ||
+      null,
+
+    title:
+      item?.title ||
+      snapshot?.title ||
+      "Untitled Post",
+
+    type:
+      item?.type ||
+      snapshot?.type ||
+      "Announcement",
+
+    content:
+      item?.content ||
+      snapshot?.content ||
+      "",
+
+    status:
+      item?.status ||
+      item?.previousStatus ||
+      snapshot?.status ||
+      "approved",
+
+    adminRemarks:
+      item?.adminRemarks ||
+      snapshot?.adminRemarks ||
+      "",
+
+    eventDate:
+      item?.eventDate ||
+      snapshot?.eventDate ||
+      "",
+
+    createdAt:
+      item?.originalCreatedAt ||
+      snapshot?.createdAt ||
+      item?.createdAt ||
+      null,
+
+    archivedAt:
+      item?.archivedAt ||
+      item?.createdAt ||
+      null,
+
+    image:
+      item?.image ||
+      snapshot?.image ||
+      null,
+  };
+}
+
+function getArchiveId(post) {
+  return (
+    post?.archiveId ||
+    (post?.isArchived ? post?._id : "") ||
+    ""
+  );
+}
+
+/* =====================================================
    PAGE
 ===================================================== */
 
@@ -141,11 +271,25 @@ export default function ManageAnnouncements() {
     try {
       const response = await api.get("/announcement-archive");
 
-      setArchivedPosts(Array.isArray(response.data) ? response.data : []);
-    } catch (err) {
-      console.error("Load archive error:", err);
+      const archiveItems = getArchiveItems(
+        response.data,
+      );
 
-      setError(err.response?.data?.message || "Unable to load archived posts.");
+      setArchivedPosts(
+        archiveItems.map(
+          normalizeArchivedPost,
+        ),
+      );
+    } catch (err) {
+      console.error(
+        "Load announcement archive error:",
+        err,
+      );
+
+      setError(
+        err.response?.data?.message ||
+          "Unable to load archived posts.",
+      );
     } finally {
       setArchiveLoading(false);
     }
@@ -277,7 +421,14 @@ export default function ManageAnnouncements() {
   =================================================== */
 
   const archivePost = async () => {
-    if (!archiveTarget) {
+    const announcementId =
+      archiveTarget?._id;
+
+    if (!announcementId) {
+      setError(
+        "Unable to archive this post because its announcement ID is missing.",
+      );
+
       return;
     }
 
@@ -287,22 +438,35 @@ export default function ManageAnnouncements() {
 
     try {
       const response = await api.post(
-        `/announcement-archive/${archiveTarget._id}`,
+        `/announcement-archive/${encodeURIComponent(
+          String(announcementId),
+        )}`,
       );
 
       setSuccess(
-        response.data?.message || "Post moved to Archive successfully.",
+        response.data?.message ||
+          "Post moved to Archive successfully.",
       );
 
       setArchiveTarget(null);
       setSelectedPost(null);
 
       await reloadEverything();
+
+      /*
+        Show the archived item immediately after a
+        successful archive operation.
+      */
+      setFilter("archive");
     } catch (err) {
-      console.error("Archive post error:", err);
+      console.error(
+        "Archive announcement error:",
+        err,
+      );
 
       setError(
-        err.response?.data?.message || "Unable to move post to Archive.",
+        err.response?.data?.message ||
+          "Unable to move post to Archive.",
       );
     } finally {
       setUpdating(false);
@@ -314,7 +478,16 @@ export default function ManageAnnouncements() {
   =================================================== */
 
   const restorePost = async () => {
-    if (!restoreTarget?.archiveId) {
+    const archiveId =
+      getArchiveId(
+        restoreTarget,
+      );
+
+    if (!archiveId) {
+      setError(
+        "Unable to restore this post because its archive ID is missing.",
+      );
+
       return;
     }
 
@@ -324,20 +497,31 @@ export default function ManageAnnouncements() {
 
     try {
       const response = await api.post(
-        `/announcement-archive/${restoreTarget.archiveId}/restore`,
+        `/announcement-archive/${encodeURIComponent(
+          String(archiveId),
+        )}/restore`,
       );
 
-      setSuccess(response.data?.message || "Post restored successfully.");
+      setSuccess(
+        response.data?.message ||
+          "Post restored successfully.",
+      );
 
       setRestoreTarget(null);
       setSelectedPost(null);
 
       await reloadEverything();
+
+      setFilter("all");
     } catch (err) {
-      console.error("Restore post error:", err);
+      console.error(
+        "Restore announcement error:",
+        err,
+      );
 
       setError(
-        err.response?.data?.message || "Unable to restore archived post.",
+        err.response?.data?.message ||
+          "Unable to restore archived post.",
       );
     } finally {
       setUpdating(false);
@@ -349,7 +533,16 @@ export default function ManageAnnouncements() {
   =================================================== */
 
   const permanentlyDeletePost = async () => {
-    if (!permanentDeleteTarget?.archiveId) {
+    const archiveId =
+      getArchiveId(
+        permanentDeleteTarget,
+      );
+
+    if (!archiveId) {
+      setError(
+        "Unable to permanently delete this post because its archive ID is missing.",
+      );
+
       return;
     }
 
@@ -359,20 +552,25 @@ export default function ManageAnnouncements() {
 
     try {
       const response = await api.delete(
-        `/announcement-archive/${permanentDeleteTarget.archiveId}`,
+        `/announcement-archive/${encodeURIComponent(
+          String(archiveId),
+        )}`,
       );
 
       setSuccess(
-        response.data?.message || "Archived post permanently deleted.",
+        response.data?.message ||
+          "Archived post permanently deleted.",
       );
 
       setPermanentDeleteTarget(null);
-
       setSelectedPost(null);
 
       await loadArchive();
     } catch (err) {
-      console.error("Permanent delete error:", err);
+      console.error(
+        "Permanent announcement delete error:",
+        err,
+      );
 
       setError(
         err.response?.data?.message ||
@@ -766,7 +964,7 @@ export default function ManageAnnouncements() {
             >
               {filteredPosts.map((post) => (
                 <PostCard
-                  key={post.isArchived ? post.archiveId : post._id}
+                  key={post.isArchived ? getArchiveId(post) : post._id}
                   post={post}
                   onView={() => setSelectedPost(post)}
                   onArchive={() => setArchiveTarget(post)}

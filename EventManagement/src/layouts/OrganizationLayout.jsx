@@ -63,11 +63,7 @@ const navigationItems = [
     to: "/organization/profile",
   },
 
-  {
-    label: "Change Password",
-    icon: "history",
-    to: "/organization/change-password",
-  },
+
 ];
 
 /* =====================================================

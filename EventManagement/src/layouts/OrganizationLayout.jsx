@@ -1,14 +1,26 @@
-import { useEffect, useState } from "react";
+import {
+  useEffect,
+  useState,
+} from "react";
 
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import {
+  NavLink,
+  Outlet,
+  useNavigate,
+} from "react-router-dom";
 
 import api from "../api/axiosClient.js";
+
+import nunifiedLogo from "../assets/nunifiedlogo.png";
 
 /* =====================================================
    ICON
 ===================================================== */
 
-function MaterialIcon({ name, className = "" }) {
+function MaterialIcon({
+  name,
+  className = "",
+}) {
   return (
     <span
       className={`
@@ -28,42 +40,70 @@ function MaterialIcon({ name, className = "" }) {
 
 const navigationItems = [
   {
-    label: "Dashboard",
-    icon: "dashboard",
-    to: "/organization/dashboard",
+    label:
+      "Dashboard",
+
+    icon:
+      "dashboard",
+
+    to:
+      "/organization/dashboard",
   },
 
   {
-    label: "Event Booking",
-    icon: "event_available",
-    to: "/organization/booking",
+    label:
+      "Event Booking",
+
+    icon:
+      "event_available",
+
+    to:
+      "/organization/booking",
   },
 
   {
-    label: "Booking Status",
-    icon: "fact_check",
-    to: "/organization/status",
+    label:
+      "Booking Status",
+
+    icon:
+      "fact_check",
+
+    to:
+      "/organization/status",
   },
 
   {
-    label: "Create Post",
-    icon: "campaign",
-    to: "/organization/create-post",
+    label:
+      "Create Post",
+
+    icon:
+      "campaign",
+
+    to:
+      "/organization/create-post",
   },
 
   {
-    label: "Admin Request",
-    icon: "support_agent",
-    to: "/organization/admin-request",
+    label:
+      "Admin Request",
+
+    icon:
+      "support_agent",
+
+    to:
+      "/organization/admin-request",
   },
 
   {
-    label: "Profile",
-    icon: "account_circle",
-    to: "/organization/profile",
+    label:
+      "Profile",
+
+    icon:
+      "account_circle",
+
+    to:
+      "/organization/profile",
   },
-
-
 ];
 
 /* =====================================================
@@ -71,11 +111,14 @@ const navigationItems = [
 ===================================================== */
 
 const EMPTY_ORGANIZATION = {
-  organizationName: "Organization",
+  organizationName:
+    "Organization",
 
-  acronym: "NU",
+  acronym:
+    "NU",
 
-  color: "#FACC15",
+  color:
+    "#FACC15",
 };
 
 /* =====================================================
@@ -83,94 +126,164 @@ const EMPTY_ORGANIZATION = {
 ===================================================== */
 
 export default function OrganizationLayout() {
-  const navigate = useNavigate();
+  const navigate =
+    useNavigate();
 
-  const [organization, setOrganization] = useState(EMPTY_ORGANIZATION);
+  const [
+    organization,
+    setOrganization,
+  ] =
+    useState(
+      EMPTY_ORGANIZATION
+    );
 
-  const [profileImage, setProfileImage] = useState("");
+  const [
+    profileImage,
+    setProfileImage,
+  ] =
+    useState("");
 
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [
+    sidebarOpen,
+    setSidebarOpen,
+  ] =
+    useState(false);
 
   /* ===================================================
      INITIALS
   =================================================== */
 
   const initials =
-    organization.acronym?.trim().slice(0, 3).toUpperCase() || "NU";
+    organization.acronym
+      ?.trim()
+      .slice(
+        0,
+        3
+      )
+      .toUpperCase() ||
+    "NU";
 
   /* ===================================================
      LOAD ORGANIZATION
   =================================================== */
 
-  const loadOrganization = async () => {
-    try {
-      const response = await api.get("/organizations/me");
+  const loadOrganization =
+    async () => {
+      try {
+        const response =
+          await api.get(
+            "/organizations/me"
+          );
 
-      const org = response.data?.organization || response.data || {};
+        const org =
+          response.data
+            ?.organization ||
+          response.data ||
+          {};
 
-      setOrganization({
-        ...EMPTY_ORGANIZATION,
-        ...org,
-      });
-    } catch (error) {
-      console.error("LOAD ORGANIZATION LAYOUT ERROR:", error);
+        setOrganization({
+          ...EMPTY_ORGANIZATION,
+          ...org,
+        });
+      } catch (
+        error
+      ) {
+        console.error(
+          "LOAD ORGANIZATION LAYOUT ERROR:",
+          error
+        );
 
-      /*
+        /*
           Fallback to localStorage user
           so the layout still displays.
         */
 
-      try {
-        const stored = JSON.parse(localStorage.getItem("user") || "{}");
+        try {
+          const stored =
+            JSON.parse(
+              localStorage.getItem(
+                "user"
+              ) ||
+                "{}"
+            );
 
-        const org = stored.organization || {};
+          const org =
+            stored.organization ||
+            {};
 
-        setOrganization((previous) => ({
-          ...previous,
+          setOrganization(
+            (
+              previous
+            ) => ({
+              ...previous,
 
-          organizationName:
-            org.organizationName ||
-            stored.organizationName ||
-            previous.organizationName,
+              organizationName:
+                org.organizationName ||
+                stored.organizationName ||
+                previous.organizationName,
 
-          acronym: org.acronym || stored.acronym || previous.acronym,
-        }));
-      } catch {
-        // Ignore.
+              acronym:
+                org.acronym ||
+                stored.acronym ||
+                previous.acronym,
+            })
+          );
+        } catch {
+          // Ignore.
+        }
       }
-    }
-  };
+    };
 
   /* ===================================================
      LOAD PROFILE PICTURE
   =================================================== */
 
-  const loadProfilePicture = async () => {
-    try {
-      const response = await api.get(
-        "/organization-profile/me/profile-picture",
-        {
-          params: {
-            t: Date.now(),
-          },
-        },
-      );
+  const loadProfilePicture =
+    async () => {
+      try {
+        const response =
+          await api.get(
+            "/organization-profile/me/profile-picture",
+            {
+              params: {
+                t:
+                  Date.now(),
+              },
+            }
+          );
 
-      setProfileImage(response.data?.profileImage || "");
-    } catch (error) {
-      console.error("LOAD SIDEBAR PROFILE PICTURE ERROR:", error);
+        setProfileImage(
+          response.data
+            ?.profileImage ||
+            ""
+        );
+      } catch (
+        error
+      ) {
+        console.error(
+          "LOAD SIDEBAR PROFILE PICTURE ERROR:",
+          error
+        );
 
-      setProfileImage("");
-    }
-  };
+        setProfileImage(
+          ""
+        );
+      }
+    };
 
   /* ===================================================
      LOAD LAYOUT DATA
   =================================================== */
 
-  const loadLayoutData = async () => {
-    await Promise.allSettled([loadOrganization(), loadProfilePicture()]);
-  };
+  const loadLayoutData =
+    async () => {
+      await Promise.allSettled(
+        [
+          loadOrganization(),
+          loadProfilePicture(),
+        ]
+      );
+    };
 
   useEffect(() => {
     loadLayoutData();
@@ -178,36 +291,44 @@ export default function OrganizationLayout() {
 
   /* ===================================================
      LISTEN FOR PROFILE IMAGE CHANGES
-
-     OrganizationProfile.jsx dispatches this event
-     immediately after saving/removing a picture.
   =================================================== */
 
   useEffect(() => {
-    const handleImageUpdated = (event) => {
-      setProfileImage(event.detail?.profileImage || "");
-    };
+    const handleImageUpdated =
+      (
+        event
+      ) => {
+        setProfileImage(
+          event.detail
+            ?.profileImage ||
+            ""
+        );
+      };
 
-    const handleProfileUpdated = () => {
-      loadOrganization();
-    };
+    const handleProfileUpdated =
+      () => {
+        loadOrganization();
+      };
 
     window.addEventListener(
       "organizationProfileImageUpdated",
-      handleImageUpdated,
+      handleImageUpdated
     );
 
-    window.addEventListener("organizationProfileUpdated", handleProfileUpdated);
+    window.addEventListener(
+      "organizationProfileUpdated",
+      handleProfileUpdated
+    );
 
     return () => {
       window.removeEventListener(
         "organizationProfileImageUpdated",
-        handleImageUpdated,
+        handleImageUpdated
       );
 
       window.removeEventListener(
         "organizationProfileUpdated",
-        handleProfileUpdated,
+        handleProfileUpdated
       );
     };
   }, []);
@@ -216,25 +337,39 @@ export default function OrganizationLayout() {
      LOGOUT
   =================================================== */
 
-  const handleLogout = () => {
-    localStorage.removeItem("token");
+  const handleLogout =
+    () => {
+      localStorage.removeItem(
+        "token"
+      );
 
-    localStorage.removeItem("role");
+      localStorage.removeItem(
+        "role"
+      );
 
-    localStorage.removeItem("user");
+      localStorage.removeItem(
+        "user"
+      );
 
-    navigate("/login", {
-      replace: true,
-    });
-  };
+      navigate(
+        "/login",
+        {
+          replace:
+            true,
+        }
+      );
+    };
 
   /* ===================================================
      CLOSE MOBILE SIDEBAR
   =================================================== */
 
-  const closeSidebar = () => {
-    setSidebarOpen(false);
-  };
+  const closeSidebar =
+    () => {
+      setSidebarOpen(
+        false
+      );
+    };
 
   /* ===================================================
      PAGE
@@ -256,7 +391,9 @@ export default function OrganizationLayout() {
         <button
           type="button"
           aria-label="Close sidebar"
-          onClick={closeSidebar}
+          onClick={
+            closeSidebar
+          }
           className="
             fixed
             inset-0
@@ -301,7 +438,11 @@ export default function OrganizationLayout() {
 
           lg:translate-x-0
 
-          ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
+          ${
+            sidebarOpen
+              ? "translate-x-0"
+              : "-translate-x-full"
+          }
         `}
       >
         {/* ===============================================
@@ -320,29 +461,27 @@ export default function OrganizationLayout() {
             pb-5
           "
         >
-          <div
+          <img
+            src={
+              nunifiedLogo
+            }
+            alt="NUnified Logo"
             className="
-              flex
               h-12
               w-12
               shrink-0
-              items-center
-              justify-center
 
               rounded-[14px]
 
-              border
-              border-blue-400/30
+              object-cover
+              object-center
 
-              bg-blue-700
+              shadow-lg
 
-              text-[18px]
-              font-black
-              text-yellow-300
+              ring-1
+              ring-yellow-400/20
             "
-          >
-            NU
-          </div>
+          />
 
           <div>
             <h1
@@ -368,8 +507,6 @@ export default function OrganizationLayout() {
 
         {/* ===============================================
             ORGANIZATION CARD
-
-            THIS IS THE AVATAR FROM YOUR SCREENSHOT.
         =============================================== */}
 
         <div
@@ -394,9 +531,15 @@ export default function OrganizationLayout() {
           "
         >
           <Avatar
-            image={profileImage}
-            initials={initials}
-            color={organization.color}
+            image={
+              profileImage
+            }
+            initials={
+              initials
+            }
+            color={
+              organization.color
+            }
             size="42px"
             textSize="13px"
           />
@@ -414,7 +557,9 @@ export default function OrganizationLayout() {
                 text-white
               "
             >
-              {organization.organizationName}
+              {
+                organization.organizationName
+              }
             </p>
 
             <p
@@ -425,7 +570,9 @@ export default function OrganizationLayout() {
                 text-blue-200
               "
             >
-              {organization.acronym}
+              {
+                organization.acronym
+              }
             </p>
           </div>
         </div>
@@ -460,12 +607,23 @@ export default function OrganizationLayout() {
               space-y-1.5
             "
           >
-            {navigationItems.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                onClick={closeSidebar}
-                className={({ isActive }) => `
+            {navigationItems.map(
+              (
+                item
+              ) => (
+                <NavLink
+                  key={
+                    item.to
+                  }
+                  to={
+                    item.to
+                  }
+                  onClick={
+                    closeSidebar
+                  }
+                  className={({
+                    isActive,
+                  }) => `
                     group
 
                     flex
@@ -496,23 +654,36 @@ export default function OrganizationLayout() {
                         `
                     }
                   `}
-              >
-                {({ isActive }) => (
-                  <>
-                    <MaterialIcon
-                      name={item.icon}
-                      className={`
+                >
+                  {({
+                    isActive,
+                  }) => (
+                    <>
+                      <MaterialIcon
+                        name={
+                          item.icon
+                        }
+                        className={`
                           text-[19px]
 
-                          ${isActive ? "text-white" : "text-white"}
+                          ${
+                            isActive
+                              ? "text-white"
+                              : "text-white"
+                          }
                         `}
-                    />
+                      />
 
-                    <span>{item.label}</span>
-                  </>
-                )}
-              </NavLink>
-            ))}
+                      <span>
+                        {
+                          item.label
+                        }
+                      </span>
+                    </>
+                  )}
+                </NavLink>
+              )
+            )}
           </nav>
         </div>
 
@@ -532,7 +703,9 @@ export default function OrganizationLayout() {
         >
           <button
             type="button"
-            onClick={handleLogout}
+            onClick={
+              handleLogout
+            }
             className="
               flex
               w-full
@@ -564,6 +737,7 @@ export default function OrganizationLayout() {
                 text-[18px]
               "
             />
+
             Logout
           </button>
 
@@ -629,7 +803,11 @@ export default function OrganizationLayout() {
           >
             <button
               type="button"
-              onClick={() => setSidebarOpen(true)}
+              onClick={() =>
+                setSidebarOpen(
+                  true
+                )
+              }
               className="
                 flex
                 h-9
@@ -674,15 +852,15 @@ export default function OrganizationLayout() {
                   text-blue-950
                 "
               >
-                {organization.organizationName}
+                {
+                  organization.organizationName
+                }
               </h2>
             </div>
           </div>
 
           {/* =============================================
               TOP RIGHT ACCOUNT
-
-              Profile image appears here too.
           ============================================== */}
 
           <div
@@ -710,7 +888,9 @@ export default function OrganizationLayout() {
                   text-blue-950
                 "
               >
-                {organization.organizationName}
+                {
+                  organization.organizationName
+                }
               </p>
 
               <p
@@ -721,14 +901,22 @@ export default function OrganizationLayout() {
                   text-gray-400
                 "
               >
-                {organization.acronym}
+                {
+                  organization.acronym
+                }
               </p>
             </div>
 
             <Avatar
-              image={profileImage}
-              initials={initials}
-              color={organization.color}
+              image={
+                profileImage
+              }
+              initials={
+                initials
+              }
+              color={
+                organization.color
+              }
               size="40px"
               textSize="12px"
             />
@@ -758,13 +946,15 @@ export default function OrganizationLayout() {
 
 /* =====================================================
    AVATAR
-
-   Reusable for:
-   - sidebar
-   - top-right header
 ===================================================== */
 
-function Avatar({ image, initials, color, size, textSize }) {
+function Avatar({
+  image,
+  initials,
+  color,
+  size,
+  textSize,
+}) {
   return (
     <div
       className="
@@ -783,18 +973,25 @@ function Avatar({ image, initials, color, size, textSize }) {
         shadow-sm
       "
       style={{
-        width: size,
+        width:
+          size,
 
-        height: size,
+        height:
+          size,
 
-        backgroundColor: color || "#FACC15",
+        backgroundColor:
+          color ||
+          "#FACC15",
 
-        fontSize: textSize,
+        fontSize:
+          textSize,
       }}
     >
       {image ? (
         <img
-          src={image}
+          src={
+            image
+          }
           alt="Organization Profile"
           className="
             h-full
@@ -805,7 +1002,11 @@ function Avatar({ image, initials, color, size, textSize }) {
           "
         />
       ) : (
-        <span>{initials}</span>
+        <span>
+          {
+            initials
+          }
+        </span>
       )}
     </div>
   );

@@ -1,13 +1,27 @@
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import {
+  NavLink,
+  Outlet,
+  useNavigate,
+} from "react-router-dom";
 
-import { useState } from "react";
+import {
+  useState,
+} from "react";
+
+import nunifiedLogo from "../assets/nunifiedlogo.png";
 
 /* =====================================================
    MATERIAL ICON
 ===================================================== */
 
-function MaterialIcon({ name }) {
-  return <span className="material-symbols-rounded">{name}</span>;
+function MaterialIcon({
+  name,
+}) {
+  return (
+    <span className="material-symbols-rounded">
+      {name}
+    </span>
+  );
 }
 
 /* =====================================================
@@ -15,25 +29,45 @@ function MaterialIcon({ name }) {
 ===================================================== */
 
 export default function AdminLayout() {
-  const navigate = useNavigate();
+  const navigate =
+    useNavigate();
 
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [
+    sidebarOpen,
+    setSidebarOpen,
+  ] =
+    useState(false);
 
-  const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const user =
+    JSON.parse(
+      localStorage.getItem(
+        "user"
+      ) ||
+        "{}"
+    );
 
   /* ===================================================
      LOGOUT
   =================================================== */
 
-  const logout = () => {
-    localStorage.removeItem("token");
+  const logout =
+    () => {
+      localStorage.removeItem(
+        "token"
+      );
 
-    localStorage.removeItem("role");
+      localStorage.removeItem(
+        "role"
+      );
 
-    localStorage.removeItem("user");
+      localStorage.removeItem(
+        "user"
+      );
 
-    navigate("/login");
-  };
+      navigate(
+        "/login"
+      );
+    };
 
   /* ===================================================
      NAVIGATION ITEMS
@@ -41,33 +75,58 @@ export default function AdminLayout() {
 
   const navigation = [
     {
-      to: "/admin/dashboard",
-      label: "Dashboard",
-      icon: "dashboard",
+      to:
+        "/admin/dashboard",
+
+      label:
+        "Dashboard",
+
+      icon:
+        "dashboard",
     },
 
     {
-      to: "/admin/organizations",
-      label: "Manage Organizations",
-      icon: "groups",
+      to:
+        "/admin/organizations",
+
+      label:
+        "Manage Organizations",
+
+      icon:
+        "groups",
     },
 
     {
-      to: "/admin/events",
-      label: "Manage Events",
-      icon: "event",
+      to:
+        "/admin/events",
+
+      label:
+        "Manage Events",
+
+      icon:
+        "event",
     },
 
     {
-      to: "/admin/requests",
-      label: "Manage Requests",
-      icon: "assignment",
+      to:
+        "/admin/requests",
+
+      label:
+        "Manage Requests",
+
+      icon:
+        "assignment",
     },
 
     {
-      to: "/admin/announcements",
-      label: "Announcements",
-      icon: "campaign",
+      to:
+        "/admin/announcements",
+
+      label:
+        "Announcements",
+
+      icon:
+        "campaign",
     },
   ];
 
@@ -116,25 +175,26 @@ export default function AdminLayout() {
             gap-3
           "
         >
-          <div
+          <img
+            src={
+              nunifiedLogo
+            }
+            alt="NUnified Logo"
             className="
-              flex
               h-10
               w-10
 
-              items-center
-              justify-center
-
               rounded-xl
 
-              bg-blue-800
+              object-cover
+              object-center
 
-              font-black
-              text-yellow-400
+              shadow-md
+
+              ring-1
+              ring-yellow-400/20
             "
-          >
-            NU
-          </div>
+          />
 
           <div>
             <h1
@@ -158,7 +218,11 @@ export default function AdminLayout() {
 
         <button
           type="button"
-          onClick={() => setSidebarOpen(!sidebarOpen)}
+          onClick={() =>
+            setSidebarOpen(
+              !sidebarOpen
+            )
+          }
           className="
             flex
             h-10
@@ -174,7 +238,13 @@ export default function AdminLayout() {
             text-xl
           "
         >
-          <MaterialIcon name={sidebarOpen ? "close" : "menu"} />
+          <MaterialIcon
+            name={
+              sidebarOpen
+                ? "close"
+                : "menu"
+            }
+          />
         </button>
       </header>
 
@@ -186,7 +256,11 @@ export default function AdminLayout() {
         <button
           type="button"
           aria-label="Close sidebar"
-          onClick={() => setSidebarOpen(false)}
+          onClick={() =>
+            setSidebarOpen(
+              false
+            )
+          }
           className="
             fixed
             inset-0
@@ -233,7 +307,11 @@ export default function AdminLayout() {
 
           lg:translate-x-0
 
-          ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
+          ${
+            sidebarOpen
+              ? "translate-x-0"
+              : "-translate-x-full"
+          }
         `}
       >
         {/* BRAND */}
@@ -250,33 +328,27 @@ export default function AdminLayout() {
             pb-6
           "
         >
-          <div
+          <img
+            src={
+              nunifiedLogo
+            }
+            alt="NUnified Logo"
             className="
-              flex
               h-14
               w-14
-
               shrink-0
-
-              items-center
-              justify-center
 
               rounded-2xl
 
-              border
-              border-yellow-400/20
-
-              bg-blue-800
-
-              text-xl
-              font-black
-              text-yellow-400
+              object-cover
+              object-center
 
               shadow-lg
+
+              ring-1
+              ring-yellow-400/20
             "
-          >
-            NU
-          </div>
+          />
 
           <div>
             <h2
@@ -356,7 +428,8 @@ export default function AdminLayout() {
                   font-bold
                 "
               >
-                {user.username || "Administrator"}
+                {user.username ||
+                  "Administrator"}
               </p>
 
               <p
@@ -366,7 +439,8 @@ export default function AdminLayout() {
                   text-blue-200
                 "
               >
-                {user.role || "admin"}
+                {user.role ||
+                  "admin"}
               </p>
             </div>
           </div>
@@ -398,13 +472,26 @@ export default function AdminLayout() {
             Navigation
           </p>
 
-          {navigation.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              onClick={() => setSidebarOpen(false)}
-              className={({ isActive }) =>
-                `
+          {navigation.map(
+            (
+              item
+            ) => (
+              <NavLink
+                key={
+                  item.to
+                }
+                to={
+                  item.to
+                }
+                onClick={() =>
+                  setSidebarOpen(
+                    false
+                  )
+                }
+                className={({
+                  isActive,
+                }) =>
+                  `
                     group
 
                     flex
@@ -437,10 +524,10 @@ export default function AdminLayout() {
                         `
                     }
                   `
-              }
-            >
-              <span
-                className="
+                }
+              >
+                <span
+                  className="
                     flex
                     h-8
                     w-8
@@ -450,13 +537,22 @@ export default function AdminLayout() {
 
                     rounded-lg
                   "
-              >
-                <MaterialIcon name={item.icon} />
-              </span>
+                >
+                  <MaterialIcon
+                    name={
+                      item.icon
+                    }
+                  />
+                </span>
 
-              <span>{item.label}</span>
-            </NavLink>
-          ))}
+                <span>
+                  {
+                    item.label
+                  }
+                </span>
+              </NavLink>
+            )
+          )}
         </nav>
 
         {/* BOTTOM */}
@@ -473,7 +569,9 @@ export default function AdminLayout() {
         >
           <button
             type="button"
-            onClick={logout}
+            onClick={
+              logout
+            }
             className="
               flex
               w-full
@@ -505,6 +603,7 @@ export default function AdminLayout() {
             "
           >
             <MaterialIcon name="logout" />
+
             Logout
           </button>
 
@@ -609,7 +708,8 @@ export default function AdminLayout() {
                   text-blue-950
                 "
               >
-                {user.username || "Administrator"}
+                {user.username ||
+                  "Administrator"}
               </p>
 
               <p

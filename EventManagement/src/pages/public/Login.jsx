@@ -1,54 +1,77 @@
 import { useState } from "react";
 
-import { Link, useNavigate } from "react-router-dom";
+import {
+  Link,
+  useNavigate,
+} from "react-router-dom";
 
-import { motion } from "framer-motion";
+import {
+  motion,
+} from "framer-motion";
 
 import api from "../../api/axiosClient";
+
+import nunifiedLogo from "../../assets/nunifiedlogo.png";
 
 /* =====================================================
    LOGIN PAGE
 ===================================================== */
 
 export default function Login() {
-  const navigate = useNavigate();
+  const navigate =
+    useNavigate();
 
   /* ===================================================
      FORM
   =================================================== */
 
-  const [form, setForm] = useState({
-    role: "organization",
-    username: "",
-    password: "",
-  });
+  const [form, setForm] =
+    useState({
+      role: "organization",
+      username: "",
+      password: "",
+    });
 
   /* ===================================================
      PASSWORD VISIBILITY
   =================================================== */
 
-  const [showPassword, setShowPassword] = useState(false);
+  const [
+    showPassword,
+    setShowPassword,
+  ] = useState(false);
 
   /* ===================================================
      STATES
   =================================================== */
 
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] =
+    useState(false);
 
-  const [error, setError] = useState("");
+  const [error, setError] =
+    useState("");
 
   /* ===================================================
      INPUT CHANGE
   =================================================== */
 
-  const handleChange = (event) => {
-    const { name, value } = event.target;
+  const handleChange = (
+    event
+  ) => {
+    const {
+      name,
+      value,
+    } =
+      event.target;
 
-    setForm((previous) => ({
-      ...previous,
+    setForm(
+      (previous) => ({
+        ...previous,
 
-      [name]: value,
-    }));
+        [name]:
+          value,
+      })
+    );
 
     setError("");
   };
@@ -57,93 +80,142 @@ export default function Login() {
      LOGIN
   =================================================== */
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
+  const handleSubmit =
+    async (event) => {
+      event.preventDefault();
 
-    setError("");
+      setError("");
 
-    /* ===============================================
+      /* ===============================================
          VALIDATION
       =============================================== */
 
-    if (!form.username.trim()) {
-      setError("Username is required.");
+      if (
+        !form.username.trim()
+      ) {
+        setError(
+          "Username is required."
+        );
 
-      return;
-    }
+        return;
+      }
 
-    if (!form.password) {
-      setError("Password is required.");
+      if (
+        !form.password
+      ) {
+        setError(
+          "Password is required."
+        );
 
-      return;
-    }
+        return;
+      }
 
-    setLoading(true);
+      setLoading(true);
 
-    try {
-      /* =============================================
+      try {
+        /* =============================================
            LOGIN API
         ============================================= */
 
-      const { data } = await api.post(
-        "/auth/login",
+        const { data } =
+          await api.post(
+            "/auth/login",
 
-        {
-          role: form.role,
+            {
+              role:
+                form.role,
 
-          username: form.username.trim(),
+              username:
+                form.username.trim(),
 
-          password: form.password,
-        },
-      );
+              password:
+                form.password,
+            }
+          );
 
-      /* =============================================
+        /* =============================================
            SAVE SESSION
         ============================================= */
 
-      localStorage.setItem("token", data.token);
+        localStorage.setItem(
+          "token",
+          data.token
+        );
 
-      localStorage.setItem("role", data.user.role);
+        localStorage.setItem(
+          "role",
+          data.user.role
+        );
 
-      localStorage.setItem("user", JSON.stringify(data.user));
+        localStorage.setItem(
+          "user",
+          JSON.stringify(
+            data.user
+          )
+        );
 
-      /* =============================================
+        /* =============================================
            ADMIN
         ============================================= */
 
-      if (data.user.role === "admin") {
-        navigate("/admin/dashboard", {
-          replace: true,
-        });
+        if (
+          data.user.role ===
+          "admin"
+        ) {
+          navigate(
+            "/admin/dashboard",
+            {
+              replace:
+                true,
+            }
+          );
 
-        return;
-      }
+          return;
+        }
 
-      /* =============================================
+        /* =============================================
            ORGANIZATION
         ============================================= */
 
-      if (data.user.role === "organization") {
-        navigate("/organization/dashboard", {
-          replace: true,
-        });
+        if (
+          data.user.role ===
+          "organization"
+        ) {
+          navigate(
+            "/organization/dashboard",
+            {
+              replace:
+                true,
+            }
+          );
 
-        return;
-      }
+          return;
+        }
 
-      /* =============================================
+        /* =============================================
            UNKNOWN ROLE
         ============================================= */
 
-      setError("Your account role is not supported.");
-    } catch (error) {
-      console.error("LOGIN ERROR:", error);
+        setError(
+          "Your account role is not supported."
+        );
+      } catch (
+        error
+      ) {
+        console.error(
+          "LOGIN ERROR:",
+          error
+        );
 
-      setError(error.response?.data?.message || "Login failed.");
-    } finally {
-      setLoading(false);
-    }
-  };
+        setError(
+          error.response?.data
+            ?.message ||
+            "Login failed."
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
 
   /* =====================================================
      PAGE
@@ -208,29 +280,35 @@ export default function Login() {
               justify-center
             "
           >
-            <div
+            <motion.img
+              src={nunifiedLogo}
+              alt="NUnified Logo"
+              initial={{
+                opacity: 0,
+                scale: 0.9,
+              }}
+              animate={{
+                opacity: 1,
+                scale: 1,
+              }}
+              transition={{
+                duration: 0.45,
+              }}
               className="
-                flex
-                h-16
-                w-16
-
-                items-center
-                justify-center
+                h-20
+                w-20
 
                 rounded-2xl
 
-                bg-[#123B78]
-
-                text-xl
-                font-black
-
-                text-yellow-400
+                object-cover
+                object-center
 
                 shadow-lg
+
+                ring-1
+                ring-black/5
               "
-            >
-              NU
-            </div>
+            />
           </div>
 
           {/* =================================================
@@ -262,7 +340,8 @@ export default function Login() {
               text-gray-500
             "
           >
-            Sign in to NUnified Event Management System
+            Sign in to NUnified Event
+            Management System
           </p>
 
           {/* =================================================
@@ -304,7 +383,9 @@ export default function Login() {
                 error
               </span>
 
-              <span>{error}</span>
+              <span>
+                {error}
+              </span>
             </div>
           )}
 
@@ -313,7 +394,9 @@ export default function Login() {
           ================================================= */}
 
           <form
-            onSubmit={handleSubmit}
+            onSubmit={
+              handleSubmit
+            }
             className="
               mt-7
             "
@@ -335,8 +418,12 @@ export default function Login() {
 
             <select
               name="role"
-              value={form.role}
-              onChange={handleChange}
+              value={
+                form.role
+              }
+              onChange={
+                handleChange
+              }
               className="
                 mt-2
 
@@ -361,9 +448,13 @@ export default function Login() {
                 focus:ring-blue-100
               "
             >
-              <option value="organization">Organization</option>
+              <option value="organization">
+                Organization
+              </option>
 
-              <option value="admin">Administrator</option>
+              <option value="admin">
+                Administrator
+              </option>
             </select>
 
             {/* ===============================================
@@ -382,6 +473,7 @@ export default function Login() {
               "
             >
               Username
+
               <span
                 className="
                   ml-1
@@ -395,8 +487,12 @@ export default function Login() {
             <input
               type="text"
               name="username"
-              value={form.username}
-              onChange={handleChange}
+              value={
+                form.username
+              }
+              onChange={
+                handleChange
+              }
               required
               autoComplete="username"
               placeholder="Enter your username"
@@ -439,6 +535,7 @@ export default function Login() {
               "
             >
               Password
+
               <span
                 className="
                   ml-1
@@ -455,10 +552,18 @@ export default function Login() {
               "
             >
               <input
-                type={showPassword ? "text" : "password"}
+                type={
+                  showPassword
+                    ? "text"
+                    : "password"
+                }
                 name="password"
-                value={form.password}
-                onChange={handleChange}
+                value={
+                  form.password
+                }
+                onChange={
+                  handleChange
+                }
                 required
                 autoComplete="current-password"
                 placeholder="Enter your password"
@@ -488,7 +593,14 @@ export default function Login() {
 
               <button
                 type="button"
-                onClick={() => setShowPassword((previous) => !previous)}
+                onClick={() =>
+                  setShowPassword(
+                    (
+                      previous
+                    ) =>
+                      !previous
+                  )
+                }
                 className="
                   absolute
 
@@ -507,7 +619,9 @@ export default function Login() {
                   hover:text-blue-950
                 "
               >
-                {showPassword ? "Hide" : "Show"}
+                {showPassword
+                  ? "Hide"
+                  : "Show"}
               </button>
             </div>
 
@@ -550,6 +664,7 @@ export default function Login() {
                 >
                   lock_reset
                 </span>
+
                 Forgot Password?
               </Link>
             </div>
@@ -560,7 +675,9 @@ export default function Login() {
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={
+                loading
+              }
               className="
                 mt-5
 
@@ -606,7 +723,9 @@ export default function Login() {
                 </span>
               )}
 
-              {loading ? "Signing in..." : "Sign In"}
+              {loading
+                ? "Signing in..."
+                : "Sign In"}
             </button>
           </form>
 
@@ -635,7 +754,8 @@ export default function Login() {
                 hover:underline
               "
             >
-              Continue to Student Homepage
+              Continue to Student
+              Homepage
             </Link>
           </div>
 
@@ -649,7 +769,8 @@ export default function Login() {
               text-gray-400
             "
           >
-            Students do not need an account.
+            Students do not need an
+            account.
           </p>
 
           {/* =================================================

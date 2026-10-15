@@ -1,75 +1,189 @@
 import { useState } from "react";
 
-import { Link, useNavigate } from "react-router-dom";
+import {
+  Link,
+  useNavigate,
+} from "react-router-dom";
 
 import api from "../../api/axiosClient";
 
+import nunifiedLogo from "../../assets/nunifiedlogo.png";
+
 export default function AdminLogin() {
-  const navigate = useNavigate();
+  const navigate =
+    useNavigate();
 
-  const [form, setForm] = useState({
-    username: "",
-    password: "",
-  });
+  const [form, setForm] =
+    useState({
+      username: "",
+      password: "",
+    });
 
-  const [error, setError] = useState("");
+  const [error, setError] =
+    useState("");
 
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] =
+    useState(false);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  /* =====================================================
+     LOGIN
+  ===================================================== */
 
-    setError("");
-    setLoading(true);
+  const handleSubmit =
+    async (e) => {
+      e.preventDefault();
 
-    try {
-      const { data } = await api.post("/auth/login", form);
+      setError("");
+      setLoading(true);
 
-      if (data.user.role !== "admin") {
-        setError("This account is not an administrator.");
+      try {
+        const { data } =
+          await api.post(
+            "/auth/login",
+            form
+          );
 
-        return;
+        /* ===============================================
+           ADMIN ONLY
+        =============================================== */
+
+        if (
+          data.user.role !==
+          "admin"
+        ) {
+          setError(
+            "This account is not an administrator."
+          );
+
+          return;
+        }
+
+        /* ===============================================
+           SAVE SESSION
+        =============================================== */
+
+        localStorage.setItem(
+          "token",
+          data.token
+        );
+
+        localStorage.setItem(
+          "role",
+          data.user.role
+        );
+
+        localStorage.setItem(
+          "user",
+          JSON.stringify(
+            data.user
+          )
+        );
+
+        /* ===============================================
+           DASHBOARD
+        =============================================== */
+
+        navigate(
+          "/admin/dashboard"
+        );
+      } catch (error) {
+        setError(
+          error.response?.data
+            ?.message ||
+            "Invalid admin credentials."
+        );
+      } finally {
+        setLoading(false);
       }
+    };
 
-      localStorage.setItem("token", data.token);
-
-      localStorage.setItem("role", data.user.role);
-
-      localStorage.setItem("user", JSON.stringify(data.user));
-
-      navigate("/admin/dashboard");
-    } catch (error) {
-      setError(error.response?.data?.message || "Invalid admin credentials.");
-    } finally {
-      setLoading(false);
-    }
-  };
+  /* =====================================================
+     PAGE
+  ===================================================== */
 
   return (
     <div className="auth-screen">
-      <form className="auth-card" onSubmit={handleSubmit}>
-        <div className="nu-logo">NU</div>
+      <form
+        className="auth-card"
+        onSubmit={handleSubmit}
+      >
+        {/* ===============================================
+            NUNIFIED LOGO
+        =============================================== */}
 
-        <h1>Administrator Login</h1>
+        <div
+          className="nu-logo"
+          style={{
+            overflow: "hidden",
+            padding: 0,
+          }}
+        >
+          <img
+            src={nunifiedLogo}
+            alt="NUnified Logo"
+            style={{
+              width: "100%",
+              height: "100%",
+              display: "block",
+              objectFit: "cover",
+              borderRadius:
+                "inherit",
+            }}
+          />
+        </div>
 
-        <p>NUnified Event Management System</p>
+        {/* ===============================================
+            TITLE
+        =============================================== */}
 
-        {error && <div className="alert-error">{error}</div>}
+        <h1>
+          Administrator Login
+        </h1>
 
-        <label>Username</label>
+        <p>
+          NUnified Event Management
+          System
+        </p>
+
+        {/* ===============================================
+            ERROR
+        =============================================== */}
+
+        {error && (
+          <div className="alert-error">
+            {error}
+          </div>
+        )}
+
+        {/* ===============================================
+            USERNAME
+        =============================================== */}
+
+        <label>
+          Username
+        </label>
 
         <input
+          type="text"
           value={form.username}
           onChange={(e) =>
             setForm({
               ...form,
-              username: e.target.value,
+              username:
+                e.target.value,
             })
           }
+          autoComplete="username"
           required
         />
 
-        <label>Password</label>
+        {/* ===============================================
+            PASSWORD
+        =============================================== */}
+
+        <label>
+          Password
+        </label>
 
         <input
           type="password"
@@ -77,25 +191,43 @@ export default function AdminLogin() {
           onChange={(e) =>
             setForm({
               ...form,
-              password: e.target.value,
+              password:
+                e.target.value,
             })
           }
+          autoComplete="current-password"
           required
         />
 
+        {/* ===============================================
+            LOGIN BUTTON
+        =============================================== */}
+
         <button
-          className="nu-btn nu-btn-primary"
+          type="submit"
+          className="
+            nu-btn
+            nu-btn-primary
+          "
           style={{
             width: "100%",
             marginTop: "20px",
           }}
           disabled={loading}
         >
-          {loading ? "Signing in..." : "Login as Admin"}
+          {loading
+            ? "Signing in..."
+            : "Login as Admin"}
         </button>
 
+        {/* ===============================================
+            HOME
+        =============================================== */}
+
         <div className="auth-links">
-          <Link to="/">Back to Home</Link>
+          <Link to="/">
+            Back to Home
+          </Link>
         </div>
       </form>
     </div>

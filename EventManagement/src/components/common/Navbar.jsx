@@ -1,10 +1,19 @@
-import { Link, NavLink, useNavigate } from "react-router-dom";
+import {
+  Link,
+  NavLink,
+  useNavigate,
+} from "react-router-dom";
+
+import nunifiedLogo from "../../assets/nunifiedlogo.png";
 
 /* =====================================================
    MATERIAL ICON
 ===================================================== */
 
-function MaterialIcon({ name, className = "" }) {
+function MaterialIcon({
+  name,
+  className = "",
+}) {
   return (
     <span
       className={`
@@ -24,47 +33,72 @@ function MaterialIcon({ name, className = "" }) {
 ===================================================== */
 
 export default function Navbar() {
-  const navigate = useNavigate();
+  const navigate =
+    useNavigate();
 
-  const token = localStorage.getItem("token");
+  const token =
+    localStorage.getItem(
+      "token"
+    );
 
-  const role = localStorage.getItem("role");
+  const role =
+    localStorage.getItem(
+      "role"
+    );
 
   /* ===================================================
      DASHBOARD ROUTE
   =================================================== */
 
-  const getDashboardRoute = () => {
-    if (role === "admin") {
-      return "/admin/dashboard";
-    }
+  const getDashboardRoute =
+    () => {
+      if (
+        role ===
+        "admin"
+      ) {
+        return "/admin/dashboard";
+      }
 
-    if (role === "organization") {
-      return "/organization/dashboard";
-    }
+      if (
+        role ===
+        "organization"
+      ) {
+        return "/organization/dashboard";
+      }
 
-    return "/";
-  };
+      return "/";
+    };
 
   /* ===================================================
      LOGOUT
   =================================================== */
 
-  const logout = () => {
-    localStorage.removeItem("token");
+  const logout =
+    () => {
+      localStorage.removeItem(
+        "token"
+      );
 
-    localStorage.removeItem("role");
+      localStorage.removeItem(
+        "role"
+      );
 
-    localStorage.removeItem("user");
+      localStorage.removeItem(
+        "user"
+      );
 
-    navigate("/login");
-  };
+      navigate(
+        "/login"
+      );
+    };
 
   /* ===================================================
      NAV LINK
   =================================================== */
 
-  const navLinkClass = ({ isActive }) => `
+  const navLinkClass = ({
+    isActive,
+  }) => `
     group
     relative
 
@@ -194,12 +228,10 @@ export default function Navbar() {
             className="
               relative
 
-              flex
               h-8
               w-8
 
-              items-center
-              justify-center
+              shrink-0
 
               overflow-hidden
 
@@ -207,12 +239,6 @@ export default function Navbar() {
 
               border
               border-yellow-400/55
-
-              bg-[#16204A]
-
-              text-[12px]
-              font-black
-              text-yellow-400
 
               shadow-sm
 
@@ -223,6 +249,20 @@ export default function Navbar() {
               group-hover:border-yellow-300
             "
           >
+            <img
+              src={
+                nunifiedLogo
+              }
+              alt="NUnified Logo"
+              className="
+                h-full
+                w-full
+
+                object-cover
+                object-center
+              "
+            />
+
             <span
               className="
                 pointer-events-none
@@ -243,8 +283,6 @@ export default function Navbar() {
                 group-hover:left-[120%]
               "
             />
-
-            <span className="relative">NU</span>
           </div>
 
           {/* BRAND TEXT */}
@@ -306,8 +344,16 @@ export default function Navbar() {
         >
           {/* HOME */}
 
-          <NavLink to="/" end className={navLinkClass}>
-            {({ isActive }) => (
+          <NavLink
+            to="/"
+            end
+            className={
+              navLinkClass
+            }
+          >
+            {({
+              isActive,
+            }) => (
               <>
                 <MaterialIcon
                   name="home"
@@ -318,15 +364,24 @@ export default function Navbar() {
                   }
                 />
 
-                <span className="text-white">Home</span>
+                <span className="text-white">
+                  Home
+                </span>
               </>
             )}
           </NavLink>
 
           {/* STUDENT HOMEPAGE */}
 
-          <NavLink to="/student" className={navLinkClass}>
-            {({ isActive }) => (
+          <NavLink
+            to="/student"
+            className={
+              navLinkClass
+            }
+          >
+            {({
+              isActive,
+            }) => (
               <>
                 <MaterialIcon
                   name="school"
@@ -337,7 +392,9 @@ export default function Navbar() {
                   }
                 />
 
-                <span className="text-white">Student Homepage</span>
+                <span className="text-white">
+                  Student Homepage
+                </span>
               </>
             )}
           </NavLink>
@@ -349,7 +406,9 @@ export default function Navbar() {
           {token ? (
             <>
               <Link
-                to={getDashboardRoute()}
+                to={
+                  getDashboardRoute()
+                }
                 className="
                   group
 
@@ -381,13 +440,19 @@ export default function Navbar() {
                   hover:bg-[#2A376B]
                 "
               >
-                <MaterialIcon name="dashboard" className="text-yellow-400" />
+                <MaterialIcon
+                  name="dashboard"
+                  className="text-yellow-400"
+                />
+
                 Dashboard
               </Link>
 
               <button
                 type="button"
-                onClick={logout}
+                onClick={
+                  logout
+                }
                 className="
                   group
 
@@ -431,6 +496,7 @@ export default function Navbar() {
                 "
               >
                 <MaterialIcon name="logout" />
+
                 Logout
               </button>
             </>
@@ -506,9 +572,14 @@ export default function Navbar() {
                 "
               />
 
-              <MaterialIcon name="login" className="relative" />
+              <MaterialIcon
+                name="login"
+                className="relative"
+              />
 
-              <span className="relative">Sign In</span>
+              <span className="relative">
+                Sign In
+              </span>
             </Link>
           )}
         </nav>
@@ -549,13 +620,19 @@ export default function Navbar() {
               text-white
             "
           >
-            <MaterialIcon name="school" className="text-yellow-400" />
+            <MaterialIcon
+              name="school"
+              className="text-yellow-400"
+            />
+
             Student
           </Link>
 
           {token ? (
             <Link
-              to={getDashboardRoute()}
+              to={
+                getDashboardRoute()
+              }
               className="
                 flex
                 h-8

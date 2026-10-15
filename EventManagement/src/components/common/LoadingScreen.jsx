@@ -1,5 +1,7 @@
 import { motion } from "framer-motion";
 
+import nunifiedLogo from "../../assets/nunifiedlogo.png";
+
 export default function LoadingScreen({ progress = 0 }) {
   return (
     <div
@@ -23,7 +25,9 @@ export default function LoadingScreen({ progress = 0 }) {
         px-6
       "
     >
-      {/* BACKGROUND DECORATION */}
+      {/* =================================================
+          BACKGROUND DECORATION
+      ================================================= */}
 
       <div
         className="
@@ -68,7 +72,9 @@ export default function LoadingScreen({ progress = 0 }) {
         />
       </div>
 
-      {/* CONTENT */}
+      {/* =================================================
+          CONTENT
+      ================================================= */}
 
       <motion.div
         initial={{
@@ -96,48 +102,48 @@ export default function LoadingScreen({ progress = 0 }) {
           text-center
         "
       >
-        {/* NU LOGO */}
+        {/* =================================================
+            NUNIFIED LOGO
+        ================================================= */}
 
-        <motion.div
+        <motion.img
+          src={nunifiedLogo}
+          alt="NUnified Logo"
           initial={{
             opacity: 0,
             y: -20,
+            scale: 0.92,
           }}
           animate={{
             opacity: 1,
             y: 0,
+            scale: 1,
           }}
           transition={{
             duration: 0.55,
           }}
           className="
-            flex
             h-28
             w-28
 
-            items-center
-            justify-center
-
             rounded-[28px]
 
-            bg-white
-
-            text-5xl
-            font-black
-            tracking-tight
-            text-[#16265A]
+            object-cover
+            object-center
 
             shadow-2xl
 
+            ring-1
+            ring-white/10
+
             sm:h-32
             sm:w-32
-            sm:text-6xl
           "
-        >
-          NU
-        </motion.div>
+        />
 
-        {/* BRAND */}
+        {/* =================================================
+            BRAND
+        ================================================= */}
 
         <motion.div
           initial={{
@@ -186,7 +192,9 @@ export default function LoadingScreen({ progress = 0 }) {
           </p>
         </motion.div>
 
-        {/* PROGRESS */}
+        {/* =================================================
+            PROGRESS
+        ================================================= */}
 
         <motion.div
           initial={{
@@ -273,7 +281,9 @@ export default function LoadingScreen({ progress = 0 }) {
           </div>
         </motion.div>
 
-        {/* SMALL LOADING DOTS */}
+        {/* =================================================
+            LOADING DOTS
+        ================================================= */}
 
         <div
           className="
@@ -289,7 +299,6 @@ export default function LoadingScreen({ progress = 0 }) {
               key={item}
               animate={{
                 opacity: [0.25, 1, 0.25],
-
                 scale: [0.8, 1, 0.8],
               }}
               transition={{
@@ -298,13 +307,13 @@ export default function LoadingScreen({ progress = 0 }) {
                 delay: item * 0.2,
               }}
               className="
-                  h-2
-                  w-2
+                h-2
+                w-2
 
-                  rounded-full
+                rounded-full
 
-                  bg-yellow-400
-                "
+                bg-yellow-400
+              "
             />
           ))}
         </div>

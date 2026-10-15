@@ -53,8 +53,7 @@ export default function Navbar() {
   const getDashboardRoute =
     () => {
       if (
-        role ===
-        "admin"
+        role === "admin"
       ) {
         return "/admin/dashboard";
       }
@@ -94,6 +93,10 @@ export default function Navbar() {
 
   /* ===================================================
      NAV LINK
+
+     No translate or scale animations.
+     This prevents the navbar from
+     visually moving.
   =================================================== */
 
   const navLinkClass = ({
@@ -109,6 +112,8 @@ export default function Navbar() {
     justify-center
     gap-1.5
 
+    whitespace-nowrap
+
     rounded-[10px]
 
     px-3.5
@@ -116,9 +121,8 @@ export default function Navbar() {
     text-[12px]
     font-black
 
-    transition-all
-    duration-300
-    ease-out
+    transition-colors
+    duration-200
 
     ${
       isActive
@@ -133,8 +137,6 @@ export default function Navbar() {
         `
         : `
           text-white/90
-
-          hover:-translate-y-[1px]
 
           hover:bg-white/10
           hover:text-white
@@ -152,8 +154,8 @@ export default function Navbar() {
     after:rounded-full
     after:bg-yellow-400
 
-    after:transition-all
-    after:duration-300
+    after:transition-[width,opacity]
+    after:duration-200
 
     ${
       isActive
@@ -178,6 +180,7 @@ export default function Navbar() {
         top-0
         z-[2000]
 
+        h-[55px]
         w-full
 
         border-b
@@ -190,12 +193,9 @@ export default function Navbar() {
     >
       <div
         className="
-          mx-auto
-
           flex
           h-[54px]
           w-full
-          max-w-6xl
 
           items-center
           justify-between
@@ -205,6 +205,7 @@ export default function Navbar() {
           px-4
 
           sm:px-6
+          lg:px-8
         "
       >
         {/* =================================================
@@ -217,7 +218,9 @@ export default function Navbar() {
             group
 
             flex
+            h-10
             shrink-0
+
             items-center
             gap-2
           "
@@ -242,10 +245,9 @@ export default function Navbar() {
 
               shadow-sm
 
-              transition-all
-              duration-300
+              transition-colors
+              duration-200
 
-              group-hover:-translate-y-[1px]
               group-hover:border-yellow-300
             "
           >
@@ -255,6 +257,7 @@ export default function Navbar() {
               }
               alt="NUnified Logo"
               className="
+                block
                 h-full
                 w-full
 
@@ -277,7 +280,7 @@ export default function Navbar() {
 
                 bg-white/20
 
-                transition-all
+                transition-[left]
                 duration-700
 
                 group-hover:left-[120%]
@@ -290,6 +293,8 @@ export default function Navbar() {
           <div
             className="
               hidden
+              min-w-[105px]
+
               leading-none
 
               min-[440px]:block
@@ -303,7 +308,7 @@ export default function Navbar() {
                 text-white
 
                 transition-colors
-                duration-300
+                duration-200
 
                 group-hover:text-yellow-300
               "
@@ -314,6 +319,8 @@ export default function Navbar() {
             <p
               className="
                 mt-[3px]
+
+                whitespace-nowrap
 
                 text-[7px]
                 font-bold
@@ -335,6 +342,7 @@ export default function Navbar() {
         <nav
           className="
             hidden
+            shrink-0
 
             items-center
             gap-1
@@ -420,6 +428,8 @@ export default function Navbar() {
                   items-center
                   gap-1.5
 
+                  whitespace-nowrap
+
                   rounded-[10px]
 
                   border
@@ -433,10 +443,9 @@ export default function Navbar() {
                   font-black
                   text-white
 
-                  transition-all
-                  duration-300
+                  transition-colors
+                  duration-200
 
-                  hover:-translate-y-[1px]
                   hover:bg-[#2A376B]
                 "
               >
@@ -468,6 +477,8 @@ export default function Navbar() {
 
                   overflow-hidden
 
+                  whitespace-nowrap
+
                   rounded-[10px]
 
                   border
@@ -486,13 +497,12 @@ export default function Navbar() {
 
                   shadow-[0_4px_14px_rgba(250,204,21,0.20)]
 
-                  transition-all
-                  duration-300
+                  transition-shadow
+                  duration-200
 
-                  hover:-translate-y-[1px]
-                  hover:scale-[1.02]
+                  hover:shadow-[0_7px_20px_rgba(250,204,21,0.30)]
 
-                  active:scale-[0.98]
+                  active:bg-yellow-400
                 "
               >
                 <MaterialIcon name="logout" />
@@ -522,6 +532,8 @@ export default function Navbar() {
 
                 overflow-hidden
 
+                whitespace-nowrap
+
                 rounded-[10px]
 
                 border
@@ -540,15 +552,10 @@ export default function Navbar() {
 
                 shadow-[0_4px_14px_rgba(250,204,21,0.22)]
 
-                transition-all
-                duration-300
-
-                hover:-translate-y-[1px]
-                hover:scale-[1.02]
+                transition-shadow
+                duration-200
 
                 hover:shadow-[0_7px_20px_rgba(250,204,21,0.30)]
-
-                active:scale-[0.98]
               "
             >
               <span
@@ -565,7 +572,7 @@ export default function Navbar() {
 
                   bg-white/40
 
-                  transition-all
+                  transition-[left]
                   duration-700
 
                   group-hover:left-[120%]
@@ -591,6 +598,8 @@ export default function Navbar() {
         <div
           className="
             flex
+            shrink-0
+
             items-center
             gap-1.5
 
@@ -606,6 +615,8 @@ export default function Navbar() {
               items-center
               gap-1
 
+              whitespace-nowrap
+
               rounded-[9px]
 
               border
@@ -618,6 +629,10 @@ export default function Navbar() {
               text-[11px]
               font-black
               text-white
+
+              transition-colors
+
+              hover:bg-white/15
             "
           >
             <MaterialIcon
@@ -638,6 +653,8 @@ export default function Navbar() {
                 h-8
                 w-8
 
+                shrink-0
+
                 items-center
                 justify-center
 
@@ -646,6 +663,10 @@ export default function Navbar() {
                 bg-yellow-400
 
                 text-[#111936]
+
+                transition-colors
+
+                hover:bg-yellow-300
               "
             >
               <MaterialIcon name="dashboard" />
@@ -658,6 +679,8 @@ export default function Navbar() {
                 h-8
                 w-8
 
+                shrink-0
+
                 items-center
                 justify-center
 
@@ -666,6 +689,10 @@ export default function Navbar() {
                 bg-yellow-400
 
                 text-[#111936]
+
+                transition-colors
+
+                hover:bg-yellow-300
               "
             >
               <MaterialIcon name="login" />

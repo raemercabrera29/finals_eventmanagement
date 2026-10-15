@@ -1,6 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
-import { motion } from "framer-motion";
+import {
+  motion,
+} from "framer-motion";
 
 import api from "../../api/axiosClient.js";
 
@@ -8,59 +14,104 @@ import api from "../../api/axiosClient.js";
    MATERIAL ICON
 ===================================================== */
 
-function MaterialIcon({ name }) {
-  return <span className="material-symbols-rounded">{name}</span>;
+function MaterialIcon({
+  name,
+}) {
+  return (
+    <span className="material-symbols-rounded">
+      {name}
+    </span>
+  );
 }
 
 /* =====================================================
    DATE FORMAT
 ===================================================== */
 
-function formatDate(value) {
+function formatDate(
+  value
+) {
   if (!value) {
     return "No date";
   }
 
-  /*
-    Handle YYYY-MM-DD without
-    timezone shifting.
-  */
+  const text =
+    String(value);
 
-  const text = String(value);
+  if (
+    /^\d{4}-\d{2}-\d{2}$/.test(
+      text
+    )
+  ) {
+    const [
+      year,
+      month,
+      day,
+    ] =
+      text
+        .split("-")
+        .map(Number);
 
-  if (/^\d{4}-\d{2}-\d{2}$/.test(text)) {
-    const [year, month, day] = text.split("-").map(Number);
+    return new Date(
+      year,
+      month - 1,
+      day
+    ).toLocaleDateString(
+      "en-US",
+      {
+        month:
+          "long",
 
-    return new Date(year, month - 1, day).toLocaleDateString("en-US", {
-      month: "long",
-      day: "numeric",
-      year: "numeric",
-    });
+        day:
+          "numeric",
+
+        year:
+          "numeric",
+      }
+    );
   }
 
-  const date = new Date(value);
+  const date =
+    new Date(value);
 
-  if (Number.isNaN(date.getTime())) {
+  if (
+    Number.isNaN(
+      date.getTime()
+    )
+  ) {
     return text;
   }
 
-  return date.toLocaleDateString("en-US", {
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  });
+  return date.toLocaleDateString(
+    "en-US",
+    {
+      month:
+        "long",
+
+      day:
+        "numeric",
+
+      year:
+        "numeric",
+    }
+  );
 }
 
 /* =====================================================
    ORGANIZATION NAME
 ===================================================== */
 
-function getOrganizationName(organization) {
+function getOrganizationName(
+  organization
+) {
   if (!organization) {
     return "NUnified";
   }
 
-  if (typeof organization === "string") {
+  if (
+    typeof organization ===
+    "string"
+  ) {
     return organization;
   }
 
@@ -76,8 +127,15 @@ function getOrganizationName(organization) {
    ORGANIZATION COLOR
 ===================================================== */
 
-function getOrganizationColor(organization) {
-  if (organization && typeof organization === "object" && organization.color) {
+function getOrganizationColor(
+  organization
+) {
+  if (
+    organization &&
+    typeof organization ===
+      "object" &&
+    organization.color
+  ) {
     return organization.color;
   }
 
@@ -88,14 +146,76 @@ function getOrganizationColor(organization) {
    SHORT DESCRIPTION
 ===================================================== */
 
-function createDescription(value, length = 155) {
-  const text = String(value || "").trim();
+function createDescription(
+  value,
+  length = 155
+) {
+  const text =
+    String(
+      value || ""
+    ).trim();
 
-  if (text.length <= length) {
+  if (
+    text.length <=
+    length
+  ) {
     return text;
   }
 
-  return `${text.slice(0, length)}...`;
+  return `${text.slice(
+    0,
+    length
+  )}...`;
+}
+
+/* =====================================================
+   FILTER CATEGORY
+===================================================== */
+
+function getPostCategory(
+  post
+) {
+  if (
+    post?.source ===
+    "event"
+  ) {
+    return "event";
+  }
+
+  const type =
+    String(
+      post?.type || ""
+    )
+      .trim()
+      .toLowerCase();
+
+  if (
+    type === "news"
+  ) {
+    return "news";
+  }
+
+  return "announcement";
+}
+
+/* =====================================================
+   DISPLAY TYPE
+===================================================== */
+
+function getDisplayType(
+  post
+) {
+  if (
+    post?.source ===
+    "event"
+  ) {
+    return "Event";
+  }
+
+  return (
+    post?.type ||
+    "Announcement"
+  );
 }
 
 /* =====================================================
@@ -103,270 +223,644 @@ function createDescription(value, length = 155) {
 ===================================================== */
 
 export default function StudentHome() {
-  const [posts, setPosts] = useState([]);
+  const [
+    posts,
+    setPosts,
+  ] =
+    useState([]);
 
-  const [search, setSearch] = useState("");
+  const [
+    search,
+    setSearch,
+  ] =
+    useState("");
 
-  const [selectedPost, setSelectedPost] = useState(null);
+  const [
+    typeFilter,
+    setTypeFilter,
+  ] =
+    useState("all");
 
-  const [currentPage, setCurrentPage] = useState(1);
+  const [
+    selectedPost,
+    setSelectedPost,
+  ] =
+    useState(null);
 
-  const [visibleCount, setVisibleCount] = useState(4);
+  const [
+    currentPage,
+    setCurrentPage,
+  ] =
+    useState(1);
 
-  const [loading, setLoading] = useState(true);
+  const [
+    visibleCount,
+    setVisibleCount,
+  ] =
+    useState(4);
 
-  const [error, setError] = useState("");
+  const [
+    loading,
+    setLoading,
+  ] =
+    useState(true);
+
+  const [
+    error,
+    setError,
+  ] =
+    useState("");
 
   /* ===================================================
      SETTINGS
   =================================================== */
 
-  const postsPerPage = 10;
+  const postsPerPage =
+    10;
 
-  const initialVisibleCount = 4;
+  const initialVisibleCount =
+    4;
 
-  const viewMoreIncrement = 3;
+  const viewMoreIncrement =
+    3;
 
   /* ===================================================
-     LOAD PUBLIC CONTENT
-
-     Approved announcements are returned
-     by GET /api/announcements.
+     LOAD POSTS
   =================================================== */
 
-  const loadPosts = async () => {
-    setLoading(true);
-    setError("");
+  const loadPosts =
+    async () => {
+      setLoading(true);
 
-    try {
-      /*
-          Use allSettled so StudentHome
-          still loads if one public
-          endpoint has no data.
-        */
+      setError("");
 
-      const results = await Promise.allSettled([
-        api.get("/announcements"),
+      try {
+        const results =
+          await Promise.allSettled(
+            [
+              api.get(
+                "/announcements"
+              ),
 
-        api.get("/events"),
-      ]);
+              api.get(
+                "/events"
+              ),
+            ]
+          );
 
-      const announcementResponse = results[0];
+        const announcementResponse =
+          results[0];
 
-      const eventResponse = results[1];
+        const eventResponse =
+          results[1];
 
-      const announcements =
-        announcementResponse.status === "fulfilled"
-          ? Array.isArray(announcementResponse.value.data)
-            ? announcementResponse.value.data
-            : []
-          : [];
+        const announcements =
+          announcementResponse.status ===
+          "fulfilled"
+            ? Array.isArray(
+                announcementResponse
+                  .value.data
+              )
+              ? announcementResponse
+                  .value.data
+              : []
+            : [];
 
-      const events =
-        eventResponse.status === "fulfilled"
-          ? Array.isArray(eventResponse.value.data)
-            ? eventResponse.value.data
-            : []
-          : [];
+        const events =
+          eventResponse.status ===
+          "fulfilled"
+            ? Array.isArray(
+                eventResponse
+                  .value.data
+              )
+              ? eventResponse
+                  .value.data
+              : []
+            : [];
 
-      /* =============================================
-           ANNOUNCEMENTS
-        ============================================== */
+        /* =============================================
+           ANNOUNCEMENTS / NEWS
+        ============================================= */
 
-      const announcementPosts = announcements.map((announcement) => {
-        const organization = announcement.organization;
+        const announcementPosts =
+          announcements.map(
+            (
+              announcement
+            ) => {
+              const organization =
+                announcement.organization;
 
-        const content = announcement.content || announcement.description || "";
+              const content =
+                announcement.content ||
+                announcement.description ||
+                "";
 
-        const dateRaw =
-          announcement.eventDate ||
-          announcement.publishedAt ||
-          announcement.createdAt ||
-          announcement.date;
+              const dateRaw =
+                announcement.eventDate ||
+                announcement.publishedAt ||
+                announcement.createdAt ||
+                announcement.date;
 
-        return {
-          id: announcement._id,
+              return {
+                id:
+                  announcement._id,
 
-          source: "announcement",
+                source:
+                  "announcement",
 
-          title: announcement.title || "Announcement",
+                title:
+                  announcement.title ||
+                  "Announcement",
 
-          organization: getOrganizationName(organization),
+                organization:
+                  getOrganizationName(
+                    organization
+                  ),
 
-          organizationColor: getOrganizationColor(organization),
+                organizationColor:
+                  getOrganizationColor(
+                    organization
+                  ),
 
-          acronym:
-            typeof organization === "object" ? organization?.acronym || "" : "",
+                acronym:
+                  typeof organization ===
+                  "object"
+                    ? organization
+                        ?.acronym ||
+                      ""
+                    : "",
 
-          type: announcement.type || "Announcement",
+                type:
+                  announcement.type ||
+                  "Announcement",
 
-          dateRaw,
+                dateRaw,
 
-          date: formatDate(dateRaw),
+                date:
+                  formatDate(
+                    dateRaw
+                  ),
 
-          image: announcement.image || null,
+                image:
+                  announcement.image ||
+                  null,
 
-          description: createDescription(content),
+                description:
+                  createDescription(
+                    content
+                  ),
 
-          content,
+                content,
 
-          venue: "",
+                venue: "",
 
-          time: "",
-        };
-      });
+                time: "",
+              };
+            }
+          );
 
-      /* =============================================
+        /* =============================================
            EVENTS
-        ============================================== */
+        ============================================= */
 
-      const eventPosts = events.map((event) => {
-        const organization = event.organization;
+        const eventPosts =
+          events.map(
+            (
+              event
+            ) => {
+              const organization =
+                event.organization;
 
-        const content = event.description || event.content || "";
+              const content =
+                event.description ||
+                event.content ||
+                "";
 
-        const dateRaw = event.eventDate || event.date || event.createdAt;
+              const dateRaw =
+                event.eventDate ||
+                event.date ||
+                event.createdAt;
 
-        let time = "";
+              let time =
+                "";
 
-        if (event.startTime && event.endTime) {
-          time = `${event.startTime} - ${event.endTime}`;
-        } else {
-          time = event.time || "";
-        }
+              if (
+                event.startTime &&
+                event.endTime
+              ) {
+                time =
+                  `${event.startTime} - ${event.endTime}`;
+              } else {
+                time =
+                  event.time ||
+                  "";
+              }
 
-        return {
-          id: event._id,
+              return {
+                id:
+                  event._id,
 
-          source: "event",
+                source:
+                  "event",
 
-          title: event.eventName || event.title || "Campus Event",
+                title:
+                  event.eventName ||
+                  event.title ||
+                  "Campus Event",
 
-          organization: getOrganizationName(organization),
+                organization:
+                  getOrganizationName(
+                    organization
+                  ),
 
-          organizationColor: getOrganizationColor(organization),
+                organizationColor:
+                  getOrganizationColor(
+                    organization
+                  ),
 
-          acronym:
-            typeof organization === "object" ? organization?.acronym || "" : "",
+                acronym:
+                  typeof organization ===
+                  "object"
+                    ? organization
+                        ?.acronym ||
+                      ""
+                    : "",
 
-          type: event.eventType || event.type || "Event",
+                type:
+                  event.eventType ||
+                  event.type ||
+                  "Event",
 
-          dateRaw,
+                dateRaw,
 
-          date: formatDate(dateRaw),
+                date:
+                  formatDate(
+                    dateRaw
+                  ),
 
-          image: event.image || event.imageUrl || null,
+                image:
+                  event.image ||
+                  event.imageUrl ||
+                  null,
 
-          description: createDescription(content),
+                description:
+                  createDescription(
+                    content
+                  ),
 
-          content,
+                content,
 
-          venue: event.venue || "",
+                venue:
+                  event.venue ||
+                  "",
 
-          time,
-        };
-      });
+                time,
+              };
+            }
+          );
 
-      /* =============================================
+        /* =============================================
            COMBINE
-        ============================================== */
+        ============================================= */
 
-      const combined = [...announcementPosts, ...eventPosts].sort((a, b) => {
-        const dateA = new Date(a.dateRaw || 0).getTime();
+        const combined =
+          [
+            ...announcementPosts,
+            ...eventPosts,
+          ].sort(
+            (
+              a,
+              b
+            ) => {
+              const dateA =
+                new Date(
+                  a.dateRaw ||
+                    0
+                ).getTime();
 
-        const dateB = new Date(b.dateRaw || 0).getTime();
+              const dateB =
+                new Date(
+                  b.dateRaw ||
+                    0
+                ).getTime();
 
-        return dateB - dateA;
-      });
+              return (
+                dateB -
+                dateA
+              );
+            }
+          );
 
-      setPosts(combined);
-    } catch (err) {
-      console.error("Student home error:", err);
+        setPosts(
+          combined
+        );
+      } catch (
+        err
+      ) {
+        console.error(
+          "Student home error:",
+          err
+        );
 
-      setError("Unable to load campus posts.");
-    } finally {
-      setLoading(false);
-    }
-  };
+        setError(
+          "Unable to load campus posts."
+        );
+      } finally {
+        setLoading(
+          false
+        );
+      }
+    };
 
   useEffect(() => {
     loadPosts();
   }, []);
 
   /* ===================================================
-     SEARCH
+     COUNTS
   =================================================== */
 
-  const filteredPosts = useMemo(() => {
-    const value = search.trim().toLowerCase();
+  const counts =
+    useMemo(
+      () => ({
+        all:
+          posts.length,
 
-    if (!value) {
-      return posts;
-    }
+        news:
+          posts.filter(
+            (
+              post
+            ) =>
+              getPostCategory(
+                post
+              ) ===
+              "news"
+          ).length,
 
-    return posts.filter((post) =>
-      [post.organization, post.acronym, post.title, post.type].some((field) =>
-        String(field || "")
-          .toLowerCase()
-          .includes(value),
-      ),
+        announcement:
+          posts.filter(
+            (
+              post
+            ) =>
+              getPostCategory(
+                post
+              ) ===
+              "announcement"
+          ).length,
+
+        event:
+          posts.filter(
+            (
+              post
+            ) =>
+              getPostCategory(
+                post
+              ) ===
+              "event"
+          ).length,
+      }),
+      [posts]
     );
-  }, [posts, search]);
+
+  /* ===================================================
+     FILTER POSTS
+  =================================================== */
+
+  const filteredPosts =
+    useMemo(() => {
+      const value =
+        search
+          .trim()
+          .toLowerCase();
+
+      return posts.filter(
+        (
+          post
+        ) => {
+          const matchesType =
+            typeFilter ===
+              "all" ||
+            getPostCategory(
+              post
+            ) ===
+              typeFilter;
+
+          if (
+            !matchesType
+          ) {
+            return false;
+          }
+
+          if (!value) {
+            return true;
+          }
+
+          return [
+            post.organization,
+            post.acronym,
+            post.title,
+            post.type,
+            post.description,
+          ].some(
+            (
+              field
+            ) =>
+              String(
+                field ||
+                  ""
+              )
+                .toLowerCase()
+                .includes(
+                  value
+                )
+          );
+        }
+      );
+    }, [
+      posts,
+      search,
+      typeFilter,
+    ]);
+
+  /* ===================================================
+     FILTER BUTTONS
+  =================================================== */
+
+  const filterButtons =
+    [
+      {
+        key:
+          "all",
+
+        label:
+          "All",
+
+        icon:
+          "grid_view",
+
+        count:
+          counts.all,
+      },
+
+      {
+        key:
+          "news",
+
+        label:
+          "News",
+
+        icon:
+          "newspaper",
+
+        count:
+          counts.news,
+      },
+
+      {
+        key:
+          "announcement",
+
+        label:
+          "Announcements",
+
+        icon:
+          "campaign",
+
+        count:
+          counts.announcement,
+      },
+
+      {
+        key:
+          "event",
+
+        label:
+          "Events",
+
+        icon:
+          "event",
+
+        count:
+          counts.event,
+      },
+    ];
 
   /* ===================================================
      PAGINATION
   =================================================== */
 
-  const totalPages = Math.ceil(filteredPosts.length / postsPerPage);
+  const totalPages =
+    Math.ceil(
+      filteredPosts.length /
+        postsPerPage
+    );
 
-  const currentPagePosts = useMemo(() => {
-    const start = (currentPage - 1) * postsPerPage;
+  const currentPagePosts =
+    useMemo(() => {
+      const start =
+        (currentPage -
+          1) *
+        postsPerPage;
 
-    return filteredPosts.slice(start, start + postsPerPage);
-  }, [filteredPosts, currentPage]);
+      return filteredPosts.slice(
+        start,
+        start +
+          postsPerPage
+      );
+    }, [
+      filteredPosts,
+      currentPage,
+    ]);
+
+  const featured =
+    currentPagePosts[0];
+
+  const otherPosts =
+    currentPagePosts.slice(
+      1
+    );
+
+  const visibleGridCount =
+    Math.max(
+      visibleCount -
+        1,
+      0
+    );
+
+  const visiblePosts =
+    otherPosts.slice(
+      0,
+      visibleGridCount
+    );
+
+  const canViewMore =
+    visibleCount <
+    currentPagePosts.length;
 
   /* ===================================================
-     FEATURED
-  =================================================== */
-
-  const featured = currentPagePosts[0];
-
-  const otherPosts = currentPagePosts.slice(1);
-
-  const visibleGridCount = Math.max(visibleCount - 1, 0);
-
-  const visiblePosts = otherPosts.slice(0, visibleGridCount);
-
-  const canViewMore = visibleCount < currentPagePosts.length;
-
-  /* ===================================================
-     SEARCH RESET
+     RESET PAGE WHEN FILTER CHANGES
   =================================================== */
 
   useEffect(() => {
-    setCurrentPage(1);
+    setCurrentPage(
+      1
+    );
 
-    setVisibleCount(initialVisibleCount);
-  }, [search]);
+    setVisibleCount(
+      initialVisibleCount
+    );
+  }, [
+    search,
+    typeFilter,
+  ]);
 
   /* ===================================================
      CHANGE PAGE
   =================================================== */
 
-  const changePage = (page) => {
-    if (page < 1 || page > totalPages) {
-      return;
-    }
+  const changePage =
+    (
+      page
+    ) => {
+      if (
+        page < 1 ||
+        page >
+          totalPages
+      ) {
+        return;
+      }
 
-    setCurrentPage(page);
+      setCurrentPage(
+        page
+      );
 
-    setVisibleCount(initialVisibleCount);
+      setVisibleCount(
+        initialVisibleCount
+      );
 
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth",
-    });
-  };
+      window.scrollTo({
+        top: 0,
+        behavior:
+          "smooth",
+      });
+    };
+
+  /* ===================================================
+     SET FILTER
+  =================================================== */
+
+  const selectFilter =
+    (
+      filter
+    ) => {
+      setTypeFilter(
+        filter
+      );
+    };
+
+  /* =====================================================
+     UI
+  ===================================================== */
 
   return (
     <div
@@ -376,7 +870,7 @@ export default function StudentHome() {
       "
     >
       {/* =================================================
-          COMPACT HERO
+          HERO
       ================================================= */}
 
       <section
@@ -420,6 +914,7 @@ export default function StudentHome() {
           <h1
             className="
               mt-2
+
               text-2xl
               font-black
 
@@ -433,6 +928,7 @@ export default function StudentHome() {
             className="
               mt-2
               max-w-2xl
+
               text-sm
               leading-6
               text-blue-100
@@ -440,8 +936,12 @@ export default function StudentHome() {
               sm:text-[15px]
             "
           >
-            Discover the latest updates, activities, announcements, and events
-            from different NU organizations.
+            Discover the latest
+            updates, activities,
+            announcements, news,
+            and events from
+            different NU
+            organizations.
           </p>
         </div>
       </section>
@@ -464,7 +964,7 @@ export default function StudentHome() {
         "
       >
         {/* =================================================
-            SEARCH
+            SEARCH + FILTER
         ================================================= */}
 
         <div
@@ -490,7 +990,8 @@ export default function StudentHome() {
               text-blue-950
             "
           >
-            Search Campus Posts
+            Search Campus
+            Posts
           </label>
 
           <div
@@ -511,9 +1012,19 @@ export default function StudentHome() {
             <MaterialIcon name="search" />
 
             <input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search organization, title, or type..."
+              value={
+                search
+              }
+              onChange={(
+                event
+              ) =>
+                setSearch(
+                  event
+                    .target
+                    .value
+                )
+              }
+              placeholder="Search organization, title, type, or event..."
               className="
                 w-full
 
@@ -530,14 +1041,21 @@ export default function StudentHome() {
             {search && (
               <button
                 type="button"
-                onClick={() => setSearch("")}
+                onClick={() =>
+                  setSearch(
+                    ""
+                  )
+                }
                 className="
                   flex
                   h-8
                   w-8
+
                   items-center
                   justify-center
+
                   rounded-full
+
                   text-gray-500
 
                   hover:bg-white
@@ -545,6 +1063,123 @@ export default function StudentHome() {
               >
                 <MaterialIcon name="close" />
               </button>
+            )}
+          </div>
+
+          {/* =============================================
+              CLICKABLE CONTENT TYPE FILTERS
+          ============================================= */}
+
+          <div
+            className="
+              mt-4
+
+              flex
+              flex-wrap
+              gap-2
+            "
+          >
+            {filterButtons.map(
+              (
+                item
+              ) => {
+                const active =
+                  typeFilter ===
+                  item.key;
+
+                return (
+                  <button
+                    key={
+                      item.key
+                    }
+                    type="button"
+                    onClick={() =>
+                      selectFilter(
+                        item.key
+                      )
+                    }
+                    className={`
+                      flex
+                      items-center
+                      gap-2
+
+                      rounded-full
+
+                      border
+
+                      px-4
+                      py-2
+
+                      text-xs
+                      font-black
+
+                      transition-colors
+                      duration-200
+
+                      ${
+                        active
+                          ? `
+                            border-blue-950
+                            bg-blue-950
+                            text-white
+                            shadow-md
+                          `
+                          : `
+                            border-gray-200
+                            bg-white
+                            text-gray-600
+
+                            hover:border-blue-200
+                            hover:bg-blue-50
+                            hover:text-blue-950
+                          `
+                      }
+                    `}
+                  >
+                    <MaterialIcon
+                      name={
+                        item.icon
+                      }
+                    />
+
+                    {
+                      item.label
+                    }
+
+                    <span
+                      className={`
+                        flex
+                        min-w-5
+                        items-center
+                        justify-center
+
+                        rounded-full
+
+                        px-1.5
+                        py-0.5
+
+                        text-[10px]
+
+                        ${
+                          active
+                            ? `
+                              bg-yellow-400
+                              text-blue-950
+                            `
+                            : `
+                              bg-gray-100
+                              text-gray-600
+                            `
+                        }
+                      `}
+                    >
+                      {
+                        item.count
+                      }
+                    </span>
+                  </button>
+                );
+              }
             )}
           </div>
         </div>
@@ -596,11 +1231,13 @@ export default function StudentHome() {
             <p
               className="
                 mt-4
+
                 font-bold
                 text-gray-500
               "
             >
-              Loading campus posts...
+              Loading campus
+              posts...
             </p>
           </div>
         )}
@@ -609,9 +1246,10 @@ export default function StudentHome() {
             ERROR
         ================================================= */}
 
-        {!loading && error && (
-          <div
-            className="
+        {!loading &&
+          error && (
+            <div
+              className="
                 mt-7
 
                 rounded-2xl
@@ -625,72 +1263,87 @@ export default function StudentHome() {
 
                 text-red-700
               "
-          >
-            <div
-              className="
+            >
+              <div
+                className="
                   flex
                   items-center
                   gap-3
                 "
-            >
-              <MaterialIcon name="error" />
+              >
+                <MaterialIcon name="error" />
 
-              <div>
-                <p className="font-black">Unable to load posts</p>
+                <div>
+                  <p className="font-black">
+                    Unable to
+                    load posts
+                  </p>
 
-                <p className="mt-1 text-sm">{error}</p>
+                  <p className="mt-1 text-sm">
+                    {error}
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {!loading && !error && (
-          <>
-            {/* =============================================
+        {!loading &&
+          !error && (
+            <>
+              {/* =============================================
                   RESULT COUNT
-              ============================================== */}
+              ============================================= */}
 
-            <div
-              className="
+              <div
+                className="
                   mt-5
 
                   flex
                   items-center
                   justify-between
 
+                  gap-3
+
                   text-xs
                   text-gray-500
 
                   sm:text-sm
                 "
-            >
-              <p>
-                Showing{" "}
-                <strong className="text-blue-950">
-                  {currentPagePosts.length}
-                </strong>{" "}
-                of{" "}
-                <strong className="text-blue-950">
-                  {filteredPosts.length}
-                </strong>{" "}
-                posts
-              </p>
+              >
+                <p>
+                  Showing{" "}
+                  <strong className="text-blue-950">
+                    {
+                      currentPagePosts.length
+                    }
+                  </strong>{" "}
+                  of{" "}
+                  <strong className="text-blue-950">
+                    {
+                      filteredPosts.length
+                    }
+                  </strong>{" "}
+                  posts
+                </p>
 
-              <p>
-                Total results:{" "}
-                <strong className="text-blue-950">
-                  {filteredPosts.length}
-                </strong>
-              </p>
-            </div>
+                <p>
+                  Total results:{" "}
+                  <strong className="text-blue-950">
+                    {
+                      filteredPosts.length
+                    }
+                  </strong>
+                </p>
+              </div>
 
-            {/* =============================================
+              {/* =============================================
                   EMPTY
-              ============================================== */}
+              ============================================= */}
 
-            {filteredPosts.length === 0 && (
-              <div
-                className="
+              {filteredPosts.length ===
+                0 && (
+                <div
+                  className="
                     mt-6
 
                     rounded-2xl
@@ -706,9 +1359,9 @@ export default function StudentHome() {
 
                     shadow-sm
                   "
-              >
-                <div
-                  className="
+                >
+                  <div
+                    className="
                       mx-auto
 
                       flex
@@ -724,55 +1377,60 @@ export default function StudentHome() {
 
                       text-gray-400
                     "
-                >
-                  <MaterialIcon name="search_off" />
-                </div>
+                  >
+                    <MaterialIcon name="search_off" />
+                  </div>
 
-                <h3
-                  className="
+                  <h3
+                    className="
                       mt-4
 
                       text-lg
                       font-black
                       text-blue-950
                     "
-                >
-                  No posts found
-                </h3>
+                  >
+                    No posts
+                    found
+                  </h3>
 
-                <p
-                  className="
+                  <p
+                    className="
                       mt-1
                       text-sm
                       text-gray-500
                     "
-                >
-                  Try another search.
-                </p>
-              </div>
-            )}
+                  >
+                    Try another
+                    search or
+                    content type.
+                  </p>
+                </div>
+              )}
 
-            {/* =============================================
+              {/* =============================================
                   FEATURED POST
+              ============================================= */}
 
-                  SMALLER / PROFESSIONAL
-              ============================================== */}
-
-            {featured && (
-              <motion.article
-                initial={{
-                  opacity: 0,
-                  y: 15,
-                }}
-                animate={{
-                  opacity: 1,
-                  y: 0,
-                }}
-                whileHover={{
-                  y: -2,
-                }}
-                onClick={() => setSelectedPost(featured)}
-                className="
+              {featured && (
+                <motion.article
+                  initial={{
+                    opacity: 0,
+                    y: 15,
+                  }}
+                  animate={{
+                    opacity: 1,
+                    y: 0,
+                  }}
+                  whileHover={{
+                    y: -2,
+                  }}
+                  onClick={() =>
+                    setSelectedPost(
+                      featured
+                    )
+                  }
+                  className="
                     mt-6
 
                     cursor-pointer
@@ -797,11 +1455,11 @@ export default function StudentHome() {
 
                     lg:grid-cols-[340px_minmax(0,1fr)]
                   "
-              >
-                {/* IMAGE */}
+                >
+                  {/* IMAGE */}
 
-                <div
-                  className="
+                  <div
+                    className="
                       relative
 
                       h-[220px]
@@ -812,23 +1470,29 @@ export default function StudentHome() {
 
                       md:h-[280px]
                     "
-                >
-                  {featured.image ? (
-                    <img
-                      src={featured.image}
-                      alt={featured.title}
-                      className="
+                  >
+                    {featured.image ? (
+                      <img
+                        src={
+                          featured.image
+                        }
+                        alt={
+                          featured.title
+                        }
+                        className="
                           h-full
                           w-full
+
                           object-cover
                         "
-                    />
-                  ) : (
-                    <div
-                      className="
+                      />
+                    ) : (
+                      <div
+                        className="
                           flex
                           h-full
                           w-full
+
                           items-center
                           justify-center
 
@@ -839,15 +1503,34 @@ export default function StudentHome() {
                           text-5xl
                           text-yellow-400
                         "
-                    >
-                      <MaterialIcon name="campaign" />
-                    </div>
-                  )}
+                      >
+                        <MaterialIcon
+                          name={
+                            featured.source ===
+                            "event"
+                              ? "event"
+                              : "campaign"
+                          }
+                        />
+                      </div>
+                    )}
 
-                  {/* TYPE */}
+                    {/* CLICKABLE TYPE */}
 
-                  <span
-                    className="
+                    <button
+                      type="button"
+                      onClick={(
+                        event
+                      ) => {
+                        event.stopPropagation();
+
+                        selectFilter(
+                          getPostCategory(
+                            featured
+                          )
+                        );
+                      }}
+                      className="
                         absolute
                         left-4
                         top-4
@@ -864,16 +1547,22 @@ export default function StudentHome() {
                         text-blue-950
 
                         shadow
+
+                        transition-colors
+
+                        hover:bg-yellow-400
                       "
-                  >
-                    {featured.type}
-                  </span>
-                </div>
+                    >
+                      {getDisplayType(
+                        featured
+                      )}
+                    </button>
+                  </div>
 
-                {/* CONTENT */}
+                  {/* CONTENT */}
 
-                <div
-                  className="
+                  <div
+                    className="
                       flex
                       min-w-0
                       flex-col
@@ -882,49 +1571,53 @@ export default function StudentHome() {
 
                       sm:p-6
                     "
-                >
-                  <div
-                    className="
+                  >
+                    <div
+                      className="
                         flex
                         flex-wrap
                         items-center
                         gap-2
                       "
-                  >
-                    <span
-                      className="
+                    >
+                      <span
+                        className="
                           text-xs
                           font-black
                           uppercase
                           tracking-wider
                           text-yellow-600
                         "
-                    >
-                      Featured
-                    </span>
+                      >
+                        Featured
+                      </span>
 
-                    <span
-                      className="
+                      <span
+                        className="
                           h-1
                           w-1
+
                           rounded-full
+
                           bg-gray-300
                         "
-                    />
+                      />
 
-                    <span
-                      className="
+                      <span
+                        className="
                           text-xs
                           font-semibold
                           text-gray-500
                         "
-                    >
-                      {featured.date}
-                    </span>
-                  </div>
+                      >
+                        {
+                          featured.date
+                        }
+                      </span>
+                    </div>
 
-                  <h2
-                    className="
+                    <h2
+                      className="
                         mt-3
 
                         text-xl
@@ -934,66 +1627,71 @@ export default function StudentHome() {
 
                         sm:text-2xl
                       "
-                  >
-                    {featured.title}
-                  </h2>
+                    >
+                      {
+                        featured.title
+                      }
+                    </h2>
 
-                  {/* ORGANIZATION */}
-
-                  <div
-                    className="
+                    <div
+                      className="
                         mt-3
 
                         flex
                         items-center
                         gap-2
                       "
-                  >
-                    <span
-                      className="
+                    >
+                      <span
+                        className="
                           h-3
                           w-3
                           shrink-0
+
                           rounded-full
                         "
-                      style={{
-                        backgroundColor: featured.organizationColor,
-                      }}
-                    />
+                        style={{
+                          backgroundColor:
+                            featured.organizationColor,
+                        }}
+                      />
 
-                    <p
-                      className="
+                      <p
+                        className="
                           truncate
 
                           text-sm
                           font-black
                           text-blue-700
                         "
-                    >
-                      {featured.organization}
+                      >
+                        {
+                          featured.organization
+                        }
 
-                      {featured.acronym ? ` • ${featured.acronym}` : ""}
-                    </p>
-                  </div>
+                        {featured.acronym
+                          ? ` • ${featured.acronym}`
+                          : ""}
+                      </p>
+                    </div>
 
-                  <p
-                    className="
+                    <p
+                      className="
                         mt-4
 
                         text-sm
                         leading-6
                         text-gray-600
                       "
-                  >
-                    {featured.description ||
-                      "Click to view this campus update."}
-                  </p>
+                    >
+                      {featured.description ||
+                        "Click to view this campus update."}
+                    </p>
 
-                  {/* EXTRA EVENT INFO */}
-
-                  {(featured.venue || featured.time) && (
-                    <div
-                      className="
+                    {(featured.venue ||
+                      featured.time) && (
+                      <div
+                        className="
                           mt-4
 
                           flex
@@ -1003,40 +1701,53 @@ export default function StudentHome() {
                           text-xs
                           text-gray-500
                         "
-                    >
-                      {featured.venue && (
-                        <span
-                          className="
+                      >
+                        {featured.venue && (
+                          <span
+                            className="
                               flex
                               items-center
                               gap-1
                             "
-                        >
-                          <MaterialIcon name="location_on" />
+                          >
+                            <MaterialIcon name="location_on" />
 
-                          {featured.venue}
-                        </span>
-                      )}
+                            {
+                              featured.venue
+                            }
+                          </span>
+                        )}
 
-                      {featured.time && (
-                        <span
-                          className="
+                        {featured.time && (
+                          <span
+                            className="
                               flex
                               items-center
                               gap-1
                             "
-                        >
-                          <MaterialIcon name="schedule" />
+                          >
+                            <MaterialIcon name="schedule" />
 
-                          {featured.time}
-                        </span>
-                      )}
-                    </div>
-                  )}
+                            {
+                              featured.time
+                            }
+                          </span>
+                        )}
+                      </div>
+                    )}
 
-                  <button
-                    type="button"
-                    className="
+                    <button
+                      type="button"
+                      onClick={(
+                        event
+                      ) => {
+                        event.stopPropagation();
+
+                        setSelectedPost(
+                          featured
+                        );
+                      }}
+                      className="
                         mt-auto
                         pt-5
 
@@ -1048,21 +1759,23 @@ export default function StudentHome() {
                         font-black
                         text-blue-950
                       "
-                  >
-                    View Details
-                    <MaterialIcon name="arrow_forward" />
-                  </button>
-                </div>
-              </motion.article>
-            )}
+                    >
+                      View Details
 
-            {/* =============================================
+                      <MaterialIcon name="arrow_forward" />
+                    </button>
+                  </div>
+                </motion.article>
+              )}
+
+              {/* =============================================
                   OTHER POSTS
-              ============================================== */}
+              ============================================= */}
 
-            {visiblePosts.length > 0 && (
-              <div
-                className="
+              {visiblePosts.length >
+                0 && (
+                <div
+                  className="
                     mt-6
 
                     grid
@@ -1072,23 +1785,32 @@ export default function StudentHome() {
 
                     lg:grid-cols-3
                   "
-              >
-                {visiblePosts.map((post) => (
-                  <motion.article
-                    key={post.id}
-                    initial={{
-                      opacity: 0,
-                      y: 15,
-                    }}
-                    animate={{
-                      opacity: 1,
-                      y: 0,
-                    }}
-                    whileHover={{
-                      y: -4,
-                    }}
-                    onClick={() => setSelectedPost(post)}
-                    className="
+                >
+                  {visiblePosts.map(
+                    (
+                      post
+                    ) => (
+                      <motion.article
+                        key={
+                          post.id
+                        }
+                        initial={{
+                          opacity: 0,
+                          y: 15,
+                        }}
+                        animate={{
+                          opacity: 1,
+                          y: 0,
+                        }}
+                        whileHover={{
+                          y: -4,
+                        }}
+                        onClick={() =>
+                          setSelectedPost(
+                            post
+                          )
+                        }
+                        className="
                           cursor-pointer
 
                           overflow-hidden
@@ -1106,11 +1828,11 @@ export default function StudentHome() {
 
                           hover:shadow-lg
                         "
-                  >
-                    {/* SMALL IMAGE */}
+                      >
+                        {/* IMAGE */}
 
-                    <div
-                      className="
+                        <div
+                          className="
                             relative
 
                             h-40
@@ -1119,22 +1841,28 @@ export default function StudentHome() {
 
                             bg-gray-100
                           "
-                    >
-                      {post.image ? (
-                        <img
-                          src={post.image}
-                          alt={post.title}
-                          className="
+                        >
+                          {post.image ? (
+                            <img
+                              src={
+                                post.image
+                              }
+                              alt={
+                                post.title
+                              }
+                              className="
                                 h-full
                                 w-full
+
                                 object-cover
                               "
-                        />
-                      ) : (
-                        <div
-                          className="
+                            />
+                          ) : (
+                            <div
+                              className="
                                 flex
                                 h-full
+
                                 items-center
                                 justify-center
 
@@ -1143,13 +1871,34 @@ export default function StudentHome() {
                                 text-4xl
                                 text-yellow-400
                               "
-                        >
-                          <MaterialIcon name="campaign" />
-                        </div>
-                      )}
+                            >
+                              <MaterialIcon
+                                name={
+                                  post.source ===
+                                  "event"
+                                    ? "event"
+                                    : "campaign"
+                                }
+                              />
+                            </div>
+                          )}
 
-                      <span
-                        className="
+                          {/* CLICKABLE TYPE */}
+
+                          <button
+                            type="button"
+                            onClick={(
+                              event
+                            ) => {
+                              event.stopPropagation();
+
+                              selectFilter(
+                                getPostCategory(
+                                  post
+                                )
+                              );
+                            }}
+                            className="
                               absolute
                               left-3
                               top-3
@@ -1164,49 +1913,61 @@ export default function StudentHome() {
                               text-[11px]
                               font-black
                               text-blue-950
+
+                              shadow
+
+                              transition-colors
+
+                              hover:bg-yellow-400
                             "
-                      >
-                        {post.type}
-                      </span>
-                    </div>
+                          >
+                            {getDisplayType(
+                              post
+                            )}
+                          </button>
+                        </div>
 
-                    {/* CARD CONTENT */}
+                        {/* CARD CONTENT */}
 
-                    <div className="p-5">
-                      <div
-                        className="
+                        <div className="p-5">
+                          <div
+                            className="
                               flex
                               items-center
                               gap-2
                             "
-                      >
-                        <span
-                          className="
+                          >
+                            <span
+                              className="
                                 h-2.5
                                 w-2.5
                                 shrink-0
+
                                 rounded-full
                               "
-                          style={{
-                            backgroundColor: post.organizationColor,
-                          }}
-                        />
+                              style={{
+                                backgroundColor:
+                                  post.organizationColor,
+                              }}
+                            />
 
-                        <p
-                          className="
+                            <p
+                              className="
                                 truncate
 
                                 text-xs
                                 font-black
                                 text-blue-700
                               "
-                        >
-                          {post.organization}
-                        </p>
-                      </div>
+                            >
+                              {
+                                post.organization
+                              }
+                            </p>
+                          </div>
 
-                      <h3
-                        className="
+                          <h3
+                            className="
                               mt-3
 
                               text-lg
@@ -1214,24 +1975,28 @@ export default function StudentHome() {
                               leading-snug
                               text-blue-950
                             "
-                      >
-                        {post.title}
-                      </h3>
+                          >
+                            {
+                              post.title
+                            }
+                          </h3>
 
-                      <p
-                        className="
+                          <p
+                            className="
                               mt-2
 
                               text-sm
                               leading-5
                               text-gray-500
                             "
-                      >
-                        {post.description}
-                      </p>
+                          >
+                            {
+                              post.description
+                            }
+                          </p>
 
-                      <div
-                        className="
+                          <div
+                            className="
                               mt-4
 
                               flex
@@ -1243,18 +2008,20 @@ export default function StudentHome() {
 
                               pt-4
                             "
-                      >
-                        <span
-                          className="
+                          >
+                            <span
+                              className="
                                 text-xs
                                 text-gray-400
                               "
-                        >
-                          {post.date}
-                        </span>
+                            >
+                              {
+                                post.date
+                              }
+                            </span>
 
-                        <span
-                          className="
+                            <span
+                              className="
                                 flex
                                 items-center
                                 gap-1
@@ -1263,43 +2030,50 @@ export default function StudentHome() {
                                 font-black
                                 text-blue-950
                               "
-                        >
-                          View
-                          <MaterialIcon name="arrow_forward" />
-                        </span>
-                      </div>
-                    </div>
-                  </motion.article>
-                ))}
-              </div>
-            )}
+                            >
+                              View
 
-            {/* =============================================
+                              <MaterialIcon name="arrow_forward" />
+                            </span>
+                          </div>
+                        </div>
+                      </motion.article>
+                    )
+                  )}
+                </div>
+              )}
+
+              {/* =============================================
                   VIEW MORE
-              ============================================== */}
+              ============================================= */}
 
-            {canViewMore && (
-              <div
-                className="
+              {canViewMore && (
+                <div
+                  className="
                     mt-8
+
                     flex
                     justify-center
                   "
-              >
-                <button
-                  type="button"
-                  onClick={() =>
-                    setVisibleCount((previous) =>
-                      Math.min(
-                        previous + viewMoreIncrement,
+                >
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setVisibleCount(
+                        (
+                          previous
+                        ) =>
+                          Math.min(
+                            previous +
+                              viewMoreIncrement,
 
-                        currentPagePosts.length,
+                            currentPagePosts.length,
 
-                        postsPerPage,
-                      ),
-                    )
-                  }
-                  className="
+                            postsPerPage
+                          )
+                      )
+                    }
+                    className="
                       flex
                       items-center
                       gap-2
@@ -1317,24 +2091,26 @@ export default function StudentHome() {
 
                       shadow
 
-                      transition
+                      transition-colors
 
                       hover:bg-blue-900
                     "
-                >
-                  View More
-                  <MaterialIcon name="expand_more" />
-                </button>
-              </div>
-            )}
+                  >
+                    View More
 
-            {/* =============================================
+                    <MaterialIcon name="expand_more" />
+                  </button>
+                </div>
+              )}
+
+              {/* =============================================
                   PAGINATION
-              ============================================== */}
+              ============================================= */}
 
-            {totalPages > 1 && (
-              <div
-                className="
+              {totalPages >
+                1 && (
+                <div
+                  className="
                     mt-8
 
                     flex
@@ -1343,15 +2119,24 @@ export default function StudentHome() {
                     justify-center
                     gap-2
                   "
-              >
-                <button
-                  type="button"
-                  disabled={currentPage === 1}
-                  onClick={() => changePage(currentPage - 1)}
-                  className="
+                >
+                  <button
+                    type="button"
+                    disabled={
+                      currentPage ===
+                      1
+                    }
+                    onClick={() =>
+                      changePage(
+                        currentPage -
+                          1
+                      )
+                    }
+                    className="
                       flex
                       h-10
                       w-10
+
                       items-center
                       justify-center
 
@@ -1363,21 +2148,36 @@ export default function StudentHome() {
 
                       disabled:opacity-40
                     "
-                >
-                  <MaterialIcon name="chevron_left" />
-                </button>
+                  >
+                    <MaterialIcon name="chevron_left" />
+                  </button>
 
-                {Array.from(
-                  {
-                    length: totalPages,
-                  },
-                  (_, index) => index + 1,
-                ).map((page) => (
-                  <button
-                    key={page}
-                    type="button"
-                    onClick={() => changePage(page)}
-                    className={`
+                  {Array.from(
+                    {
+                      length:
+                        totalPages,
+                    },
+                    (
+                      _,
+                      index
+                    ) =>
+                      index +
+                      1
+                  ).map(
+                    (
+                      page
+                    ) => (
+                      <button
+                        key={
+                          page
+                        }
+                        type="button"
+                        onClick={() =>
+                          changePage(
+                            page
+                          )
+                        }
+                        className={`
                           h-10
                           min-w-10
 
@@ -1389,7 +2189,8 @@ export default function StudentHome() {
                           font-black
 
                           ${
-                            currentPage === page
+                            currentPage ===
+                            page
                               ? `
                                 bg-yellow-400
                                 text-blue-950
@@ -1401,19 +2202,31 @@ export default function StudentHome() {
                               `
                           }
                         `}
-                  >
-                    {page}
-                  </button>
-                ))}
+                      >
+                        {
+                          page
+                        }
+                      </button>
+                    )
+                  )}
 
-                <button
-                  type="button"
-                  disabled={currentPage === totalPages}
-                  onClick={() => changePage(currentPage + 1)}
-                  className="
+                  <button
+                    type="button"
+                    disabled={
+                      currentPage ===
+                      totalPages
+                    }
+                    onClick={() =>
+                      changePage(
+                        currentPage +
+                          1
+                      )
+                    }
+                    className="
                       flex
                       h-10
                       w-10
+
                       items-center
                       justify-center
 
@@ -1425,17 +2238,17 @@ export default function StudentHome() {
 
                       disabled:opacity-40
                     "
-                >
-                  <MaterialIcon name="chevron_right" />
-                </button>
-              </div>
-            )}
-          </>
-        )}
+                  >
+                    <MaterialIcon name="chevron_right" />
+                  </button>
+                </div>
+              )}
+            </>
+          )}
       </main>
 
       {/* =================================================
-          POST DETAILS MODAL
+          DETAILS MODAL
       ================================================= */}
 
       {selectedPost && (
@@ -1455,18 +2268,27 @@ export default function StudentHome() {
 
             backdrop-blur-sm
           "
-          onClick={() => setSelectedPost(null)}
+          onClick={() =>
+            setSelectedPost(
+              null
+            )
+          }
         >
           <motion.div
             initial={{
               opacity: 0,
-              scale: 0.97,
+              scale:
+                0.97,
             }}
             animate={{
               opacity: 1,
               scale: 1,
             }}
-            onClick={(event) => event.stopPropagation()}
+            onClick={(
+              event
+            ) =>
+              event.stopPropagation()
+            }
             className="
               max-h-[90vh]
               w-full
@@ -1481,7 +2303,7 @@ export default function StudentHome() {
               shadow-2xl
             "
           >
-            {/* MODAL IMAGE */}
+            {/* IMAGE */}
 
             {selectedPost.image && (
               <div
@@ -1501,18 +2323,27 @@ export default function StudentHome() {
                 "
               >
                 <img
-                  src={selectedPost.image}
-                  alt={selectedPost.title}
+                  src={
+                    selectedPost.image
+                  }
+                  alt={
+                    selectedPost.title
+                  }
                   className="
                     max-h-[420px]
                     w-full
+
                     object-contain
                   "
                 />
 
                 <button
                   type="button"
-                  onClick={() => setSelectedPost(null)}
+                  onClick={() =>
+                    setSelectedPost(
+                      null
+                    )
+                  }
                   className="
                     absolute
                     right-4
@@ -1521,6 +2352,7 @@ export default function StudentHome() {
                     flex
                     h-10
                     w-10
+
                     items-center
                     justify-center
 
@@ -1546,14 +2378,21 @@ export default function StudentHome() {
                 >
                   <button
                     type="button"
-                    onClick={() => setSelectedPost(null)}
+                    onClick={() =>
+                      setSelectedPost(
+                        null
+                      )
+                    }
                     className="
                       flex
                       h-10
                       w-10
+
                       items-center
                       justify-center
+
                       rounded-full
+
                       bg-gray-100
                     "
                   >
@@ -1570,7 +2409,19 @@ export default function StudentHome() {
                   gap-2
                 "
               >
-                <span
+                <button
+                  type="button"
+                  onClick={() => {
+                    selectFilter(
+                      getPostCategory(
+                        selectedPost
+                      )
+                    );
+
+                    setSelectedPost(
+                      null
+                    );
+                  }}
                   className="
                     rounded-full
 
@@ -1582,10 +2433,17 @@ export default function StudentHome() {
                     text-xs
                     font-black
                     text-blue-700
+
+                    transition-colors
+
+                    hover:bg-yellow-400
+                    hover:text-blue-950
                   "
                 >
-                  {selectedPost.type}
-                </span>
+                  {getDisplayType(
+                    selectedPost
+                  )}
+                </button>
 
                 <span
                   className="
@@ -1593,7 +2451,9 @@ export default function StudentHome() {
                     text-gray-400
                   "
                 >
-                  {selectedPost.date}
+                  {
+                    selectedPost.date
+                  }
                 </span>
               </div>
 
@@ -1608,7 +2468,9 @@ export default function StudentHome() {
                   sm:text-3xl
                 "
               >
-                {selectedPost.title}
+                {
+                  selectedPost.title
+                }
               </h2>
 
               <div
@@ -1624,10 +2486,12 @@ export default function StudentHome() {
                   className="
                     h-3
                     w-3
+
                     rounded-full
                   "
                   style={{
-                    backgroundColor: selectedPost.organizationColor,
+                    backgroundColor:
+                      selectedPost.organizationColor,
                   }}
                 />
 
@@ -1637,11 +2501,18 @@ export default function StudentHome() {
                     text-blue-700
                   "
                 >
-                  {selectedPost.organization}
+                  {
+                    selectedPost.organization
+                  }
+
+                  {selectedPost.acronym
+                    ? ` • ${selectedPost.acronym}`
+                    : ""}
                 </p>
               </div>
 
-              {(selectedPost.venue || selectedPost.time) && (
+              {(selectedPost.venue ||
+                selectedPost.time) && (
                 <div
                   className="
                     mt-5
@@ -1662,7 +2533,9 @@ export default function StudentHome() {
                     <Info
                       icon="location_on"
                       label="Venue"
-                      value={selectedPost.venue}
+                      value={
+                        selectedPost.venue
+                      }
                     />
                   )}
 
@@ -1670,7 +2543,9 @@ export default function StudentHome() {
                     <Info
                       icon="schedule"
                       label="Time"
-                      value={selectedPost.time}
+                      value={
+                        selectedPost.time
+                      }
                     />
                   )}
                 </div>
@@ -1687,12 +2562,17 @@ export default function StudentHome() {
                   text-gray-700
                 "
               >
-                {selectedPost.content || selectedPost.description}
+                {selectedPost.content ||
+                  selectedPost.description}
               </div>
 
               <button
                 type="button"
-                onClick={() => setSelectedPost(null)}
+                onClick={() =>
+                  setSelectedPost(
+                    null
+                  )
+                }
                 className="
                   mt-7
                   w-full
@@ -1705,6 +2585,10 @@ export default function StudentHome() {
 
                   font-black
                   text-white
+
+                  transition-colors
+
+                  hover:bg-blue-900
                 "
               >
                 Close
@@ -1721,7 +2605,11 @@ export default function StudentHome() {
    MODAL INFO
 ===================================================== */
 
-function Info({ icon, label, value }) {
+function Info({
+  icon,
+  label,
+  value,
+}) {
   return (
     <div
       className="
@@ -1735,7 +2623,11 @@ function Info({ icon, label, value }) {
           text-blue-800
         "
       >
-        <MaterialIcon name={icon} />
+        <MaterialIcon
+          name={
+            icon
+          }
+        />
       </div>
 
       <div>
@@ -1754,6 +2646,7 @@ function Info({ icon, label, value }) {
         <p
           className="
             mt-1
+
             text-sm
             font-black
             text-blue-950

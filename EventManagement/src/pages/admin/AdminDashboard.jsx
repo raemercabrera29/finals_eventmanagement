@@ -1,8 +1,16 @@
-import { useEffect, useMemo, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
-import { Link } from "react-router-dom";
+import {
+  useNavigate,
+} from "react-router-dom";
 
-import { motion } from "framer-motion";
+import {
+  motion,
+} from "framer-motion";
 
 import api from "../../api/axiosClient.js";
 
@@ -12,7 +20,10 @@ import AdminEventCalendar from "../../components/common/AdminEventCalendar.jsx";
    MATERIAL ICON
 ===================================================== */
 
-function MaterialIcon({ name, className = "" }) {
+function MaterialIcon({
+  name,
+  className = "",
+}) {
   return (
     <span
       className={`
@@ -30,52 +41,117 @@ function MaterialIcon({ name, className = "" }) {
    HELPERS
 ===================================================== */
 
-function normalizeStatus(value) {
-  return String(value || "")
+function normalizeStatus(
+  value
+) {
+  return String(
+    value || ""
+  )
     .trim()
     .toLowerCase();
 }
 
-function formatDate(value) {
+function formatDate(
+  value
+) {
   if (!value) {
     return "No date";
   }
 
-  const date = new Date(value);
+  const date =
+    new Date(value);
 
-  if (Number.isNaN(date.getTime())) {
-    return value;
+  if (
+    Number.isNaN(
+      date.getTime()
+    )
+  ) {
+    return String(value);
   }
 
-  return date.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
+  return date.toLocaleDateString(
+    "en-US",
+    {
+      month:
+        "short",
+
+      day:
+        "numeric",
+
+      year:
+        "numeric",
+    }
+  );
 }
 
-function formatTime(start, end) {
-  if (!start && !end) {
+function formatTime(
+  value
+) {
+  if (!value) {
     return "";
   }
 
-  return [start, end].filter(Boolean).join(" - ");
+  const parts =
+    String(value).split(
+      ":"
+    );
+
+  if (
+    parts.length !==
+    2
+  ) {
+    return value;
+  }
+
+  let hours =
+    Number(parts[0]);
+
+  const minutes =
+    Number(parts[1]);
+
+  if (
+    Number.isNaN(hours) ||
+    Number.isNaN(minutes)
+  ) {
+    return value;
+  }
+
+  const period =
+    hours >= 12
+      ? "PM"
+      : "AM";
+
+  hours =
+    hours % 12 ||
+    12;
+
+  return `${hours}:${String(
+    minutes
+  ).padStart(
+    2,
+    "0"
+  )} ${period}`;
 }
 
-function getOrganizationName(organization) {
-  if (!organization) {
-    return "Organization";
-  }
-
-  if (typeof organization === "string") {
-    return organization;
-  }
-
+function getOrganizationName(
+  item
+) {
   return (
-    organization.organizationName ||
-    organization.name ||
-    organization.acronym ||
+    item?.organization
+      ?.organizationName ||
+    item?.organizationName ||
     "Organization"
+  );
+}
+
+function getOrganizationAcronym(
+  item
+) {
+  return (
+    item?.organization
+      ?.acronym ||
+    item?.acronym ||
+    ""
   );
 }
 
@@ -84,295 +160,437 @@ function getOrganizationName(organization) {
 ===================================================== */
 
 export default function AdminDashboard() {
-  const [organizations, setOrganizations] = useState([]);
-
-  const [bookings, setBookings] = useState([]);
-
-  const [announcements, setAnnouncements] = useState([]);
-
-  const [loading, setLoading] = useState(true);
-
-  const [error, setError] = useState("");
+  const navigate =
+    useNavigate();
 
   /* ===================================================
-     LOAD DATA
+     STATES
   =================================================== */
 
-  const loadDashboard = async () => {
-    setLoading(true);
-    setError("");
+  const [
+    organizations,
+    setOrganizations,
+  ] =
+    useState([]);
 
-    try {
-      const results = await Promise.allSettled([
-        api.get("/organizations"),
+  const [
+    bookings,
+    setBookings,
+  ] =
+    useState([]);
 
-        api.get("/bookings"),
+  const [
+    announcements,
+    setAnnouncements,
+  ] =
+    useState([]);
 
-        api.get("/announcements/admin"),
-      ]);
+  const [
+    loading,
+    setLoading,
+  ] =
+    useState(true);
 
-      /* ORGANIZATIONS */
+  const [
+    error,
+    setError,
+  ] =
+    useState("");
 
-      if (results[0].status === "fulfilled") {
-        setOrganizations(
-          Array.isArray(results[0].value.data) ? results[0].value.data : [],
+  /* ===================================================
+     LOAD DASHBOARD DATA
+  =================================================== */
+
+  const loadDashboard =
+    async () => {
+      setLoading(true);
+
+      setError("");
+
+      try {
+        const [
+          organizationsResult,
+          bookingsResult,
+          announcementsResult,
+        ] =
+          await Promise.allSettled(
+            [
+              api.get(
+                "/organizations"
+              ),
+
+              api.get(
+                "/bookings"
+              ),
+
+              api.get(
+                "/announcements/admin"
+              ),
+            ]
+          );
+
+        /* =============================================
+           ORGANIZATIONS
+        ============================================= */
+
+        if (
+          organizationsResult.status ===
+          "fulfilled"
+        ) {
+          setOrganizations(
+            Array.isArray(
+              organizationsResult
+                .value.data
+            )
+              ? organizationsResult
+                  .value.data
+              : []
+          );
+        } else {
+          setOrganizations(
+            []
+          );
+        }
+
+        /* =============================================
+           BOOKINGS
+        ============================================= */
+
+        if (
+          bookingsResult.status ===
+          "fulfilled"
+        ) {
+          setBookings(
+            Array.isArray(
+              bookingsResult
+                .value.data
+            )
+              ? bookingsResult
+                  .value.data
+              : []
+          );
+        } else {
+          setBookings(
+            []
+          );
+        }
+
+        /* =============================================
+           ANNOUNCEMENTS
+        ============================================= */
+
+        if (
+          announcementsResult.status ===
+          "fulfilled"
+        ) {
+          setAnnouncements(
+            Array.isArray(
+              announcementsResult
+                .value.data
+            )
+              ? announcementsResult
+                  .value.data
+              : []
+          );
+        } else {
+          setAnnouncements(
+            []
+          );
+        }
+
+        /* =============================================
+           ERROR ONLY IF EVERYTHING FAILED
+        ============================================= */
+
+        if (
+          organizationsResult.status ===
+            "rejected" &&
+          bookingsResult.status ===
+            "rejected" &&
+          announcementsResult.status ===
+            "rejected"
+        ) {
+          setError(
+            "Unable to load dashboard information."
+          );
+        }
+      } catch (
+        error
+      ) {
+        console.error(
+          "ADMIN DASHBOARD ERROR:",
+          error
         );
-      } else {
-        setOrganizations([]);
-      }
 
-      /* BOOKINGS */
-
-      if (results[1].status === "fulfilled") {
-        setBookings(
-          Array.isArray(results[1].value.data) ? results[1].value.data : [],
+        setError(
+          "Unable to load dashboard information."
         );
-      } else {
-        setBookings([]);
+      } finally {
+        setLoading(false);
       }
-
-      /* ANNOUNCEMENTS */
-
-      if (results[2].status === "fulfilled") {
-        setAnnouncements(
-          Array.isArray(results[2].value.data) ? results[2].value.data : [],
-        );
-      } else {
-        setAnnouncements([]);
-      }
-
-      const allFailed = results.every((result) => result.status === "rejected");
-
-      if (allFailed) {
-        setError("Unable to load dashboard data.");
-      }
-    } catch (err) {
-      console.error("Admin dashboard error:", err);
-
-      setError("Unable to load dashboard data.");
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
 
   useEffect(() => {
     loadDashboard();
   }, []);
 
   /* ===================================================
+     COUNTS
+  =================================================== */
+
+  const pendingBookings =
+    useMemo(
+      () =>
+        bookings.filter(
+          (booking) =>
+            normalizeStatus(
+              booking.status
+            ) ===
+            "pending"
+        ),
+      [bookings]
+    );
+
+  const approvedBookings =
+    useMemo(
+      () =>
+        bookings.filter(
+          (booking) =>
+            normalizeStatus(
+              booking.status
+            ) ===
+            "approved"
+        ),
+      [bookings]
+    );
+
+  const publishedPosts =
+    useMemo(
+      () =>
+        announcements.filter(
+          (post) =>
+            normalizeStatus(
+              post.status
+            ) ===
+            "approved"
+        ),
+      [announcements]
+    );
+
+  /* ===================================================
      STATISTICS
   =================================================== */
 
-  const pendingBookings = useMemo(
-    () =>
-      bookings.filter(
-        (booking) => normalizeStatus(booking.status) === "pending",
-      ),
-    [bookings],
-  );
-
-  const approvedPosts = useMemo(
-    () =>
-      announcements.filter(
-        (post) => normalizeStatus(post.status) === "approved",
-      ),
-    [announcements],
-  );
-
   const statistics = [
     {
-      title: "Organizations",
+      title:
+        "Organizations",
 
-      value: organizations.length,
+      value:
+        organizations.length,
 
-      icon: "groups",
+      icon:
+        "groups",
     },
 
     {
-      title: "Events",
+      title:
+        "Events",
 
-      value: bookings.length,
+      value:
+        bookings.length,
 
-      icon: "calendar_month",
+      icon:
+        "event",
     },
 
     {
-      title: "Pending Approvals",
+      title:
+        "Pending Approvals",
 
-      value: pendingBookings.length,
+      value:
+        pendingBookings.length,
 
-      icon: "pending_actions",
+      icon:
+        "pending_actions",
     },
 
     {
-      title: "Published Posts",
+      title:
+        "Published Posts",
 
-      value: approvedPosts.length,
+      value:
+        publishedPosts.length,
 
-      icon: "campaign",
+      icon:
+        "campaign",
     },
   ];
 
   /* ===================================================
-     RECENT ACTIVITIES
+     PENDING APPROVALS
 
-     Create activity list from actual data.
+     Show newest first.
   =================================================== */
 
-  const recentActivities = useMemo(() => {
-    const activities = [];
-
-    organizations.forEach((organization) => {
-      activities.push({
-        id: `org-${organization._id}`,
-
-        icon: "groups",
-
-        title: `${
-          organization.organizationName || organization.name || "Organization"
-        } account is registered.`,
-
-        date: organization.createdAt,
-
-        type: "organization",
-      });
-    });
-
-    bookings.forEach((booking) => {
-      const organization = getOrganizationName(booking.organization);
-
-      let title = `${organization} submitted "${booking.eventName || "an event"}".`;
-
-      if (normalizeStatus(booking.status) === "approved") {
-        title = `"${booking.eventName || "Event"}" was approved.`;
-      }
-
-      if (normalizeStatus(booking.status) === "rejected") {
-        title = `"${booking.eventName || "Event"}" was rejected.`;
-      }
-
-      activities.push({
-        id: `booking-${booking._id}`,
-
-        icon: "event",
-
-        title,
-
-        date: booking.updatedAt || booking.createdAt,
-
-        type: "booking",
-      });
-    });
-
-    announcements.forEach((post) => {
-      const organization = getOrganizationName(post.organization);
-
-      let title = `${organization} submitted "${post.title || "a post"}" for review.`;
-
-      if (normalizeStatus(post.status) === "approved") {
-        title = `"${post.title || "Post"}" was published.`;
-      }
-
-      if (normalizeStatus(post.status) === "rejected") {
-        title = `"${post.title || "Post"}" was rejected.`;
-      }
-
-      activities.push({
-        id: `post-${post._id}`,
-
-        icon: "campaign",
-
-        title,
-
-        date: post.updatedAt || post.createdAt,
-
-        type: "post",
-      });
-    });
-
-    return activities
-      .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))
-      .slice(0, 6);
-  }, [organizations, bookings, announcements]);
+  const visiblePending =
+    useMemo(
+      () =>
+        [...pendingBookings]
+          .sort(
+            (
+              a,
+              b
+            ) =>
+              new Date(
+                b.createdAt ||
+                  0
+              ) -
+              new Date(
+                a.createdAt ||
+                  0
+              )
+          )
+          .slice(
+            0,
+            5
+          ),
+      [pendingBookings]
+    );
 
   /* ===================================================
-     PAGE
+     RECENT ACTIVITIES
   =================================================== */
+
+  const recentActivities =
+    useMemo(() => {
+      const bookingActivities =
+        bookings.map(
+          (booking) => ({
+            id:
+              `booking-${booking._id}`,
+
+            type:
+              "booking",
+
+            icon:
+              "event",
+
+            createdAt:
+              booking.updatedAt ||
+              booking.createdAt,
+
+            text:
+              normalizeStatus(
+                booking.status
+              ) ===
+              "approved"
+                ? `"${booking.eventName || "Event"}" was approved.`
+                : normalizeStatus(
+                      booking.status
+                    ) ===
+                    "rejected"
+                  ? `"${booking.eventName || "Event"}" was rejected.`
+                  : normalizeStatus(
+                        booking.status
+                      ) ===
+                      "cancelled"
+                    ? `"${booking.eventName || "Event"}" was cancelled.`
+                    : `${getOrganizationName(
+                        booking
+                      )} submitted "${booking.eventName || "an event"}".`,
+          })
+        );
+
+      const postActivities =
+        announcements.map(
+          (post) => ({
+            id:
+              `post-${post._id}`,
+
+            type:
+              "post",
+
+            icon:
+              "campaign",
+
+            createdAt:
+              post.updatedAt ||
+              post.createdAt,
+
+            text:
+              normalizeStatus(
+                post.status
+              ) ===
+              "approved"
+                ? `"${post.title || "Post"}" was published.`
+                : normalizeStatus(
+                      post.status
+                    ) ===
+                    "rejected"
+                  ? `"${post.title || "Post"}" was rejected.`
+                  : `${getOrganizationName(
+                      post
+                    )} submitted "${post.title || "a post"}" for review.`,
+          })
+        );
+
+      return [
+        ...bookingActivities,
+        ...postActivities,
+      ]
+        .sort(
+          (
+            a,
+            b
+          ) =>
+            new Date(
+              b.createdAt ||
+                0
+            ) -
+            new Date(
+              a.createdAt ||
+                0
+            )
+        )
+        .slice(
+          0,
+          6
+        );
+    }, [
+      bookings,
+      announcements,
+    ]);
+
+  /* ===================================================
+     REVIEW BUTTON
+  =================================================== */
+
+  const reviewBooking =
+    (
+      booking
+    ) => {
+      navigate(
+        "/admin/events",
+        {
+          state: {
+            bookingId:
+              booking._id,
+          },
+        }
+      );
+    };
+
+  /* =====================================================
+     PAGE
+  ===================================================== */
 
   return (
     <div
       className="
-        space-y-5
-        pb-8
+        space-y-6
       "
     >
-      {/* =================================================
-          HEADER
-      ================================================= */}
-
-      <motion.div
-        initial={{
-          opacity: 0,
-          y: 15,
-        }}
-        animate={{
-          opacity: 1,
-          y: 0,
-        }}
-        className="
-          rounded-[20px]
-
-          bg-gradient-to-r
-          from-[#020617]
-          via-[#001F3F]
-          to-[#064477]
-
-          px-6
-          py-5
-
-          text-white
-
-          shadow-sm
-        "
-      >
-        <p
-          className="
-            text-[9px]
-            font-black
-            uppercase
-            tracking-[0.16em]
-
-            text-yellow-400
-          "
-        >
-          Administrator
-        </p>
-
-        <h1
-          className="
-            mt-1.5
-
-            text-[25px]
-            font-black
-            leading-tight
-          "
-        >
-          Admin Dashboard
-        </h1>
-
-        <p
-          className="
-            mt-1.5
-
-            text-[11px]
-
-            text-blue-100
-          "
-        >
-          Monitor and manage the NUnified Event Management System.
-        </p>
-      </motion.div>
-
       {/* =================================================
           ERROR
       ================================================= */}
@@ -380,71 +598,175 @@ export default function AdminDashboard() {
       {error && (
         <div
           className="
-            mx-auto
-            w-full
-            max-w-[1050px]
+            flex
+            items-center
+            justify-between
+            gap-4
 
-            rounded-xl
+            rounded-2xl
 
             border
             border-red-200
 
             bg-red-50
 
-            px-4
-            py-3
+            px-5
+            py-4
 
-            text-xs
-            font-bold
-            text-red-600
+            text-sm
+            font-semibold
+            text-red-700
           "
         >
-          {error}
+          <div
+            className="
+              flex
+              items-center
+              gap-2
+            "
+          >
+            <MaterialIcon
+              name="error"
+              className="
+                text-[20px]
+              "
+            />
+
+            <span>
+              {error}
+            </span>
+          </div>
+
+          <button
+            type="button"
+            onClick={
+              loadDashboard
+            }
+            className="
+              rounded-lg
+
+              bg-red-100
+
+              px-3
+              py-2
+
+              text-xs
+              font-black
+
+              hover:bg-red-200
+            "
+          >
+            Retry
+          </button>
         </div>
       )}
 
       {/* =================================================
-          STATISTIC CARDS
+          HEADER
+      ================================================= */}
 
-          SMALLER THAN BEFORE
+      <motion.div
+        initial={{
+          opacity: 0,
+          y: 20,
+        }}
+        animate={{
+          opacity: 1,
+          y: 0,
+        }}
+        className="
+          rounded-3xl
+
+          bg-gradient-to-r
+          from-[#020617]
+          via-[#001F3F]
+          to-[#003B7A]
+
+          p-6
+
+          text-white
+
+          sm:p-8
+        "
+      >
+        <p
+          className="
+            text-xs
+            font-black
+            uppercase
+            tracking-[0.2em]
+
+            text-yellow-400
+          "
+        >
+          Administrator Portal
+        </p>
+
+        <h1
+          className="
+            mt-3
+
+            text-3xl
+            font-black
+
+            sm:text-4xl
+          "
+        >
+          Admin Dashboard
+        </h1>
+
+        <p
+          className="
+            mt-3
+
+            text-sm
+            text-gray-200
+          "
+        >
+          Monitor and manage the
+          NUnified Event Management
+          System.
+        </p>
+      </motion.div>
+
+      {/* =================================================
+          STATISTICS
       ================================================= */}
 
       <div
         className="
-          mx-auto
-
           grid
-          w-full
-          max-w-[1050px]
 
-          grid-cols-1
-          gap-3
+          grid-cols-2
 
-          sm:grid-cols-2
+          gap-4
 
           lg:grid-cols-4
         "
       >
-        {statistics.map((item, index) => (
-          <motion.div
-            key={item.title}
-            initial={{
-              opacity: 0,
-              y: 12,
-            }}
-            animate={{
-              opacity: 1,
-              y: 0,
-            }}
-            transition={{
-              delay: index * 0.05,
-            }}
-            whileHover={{
-              y: -2,
-            }}
-            className="
-                min-h-[108px]
-
+        {statistics.map(
+          (
+            item,
+            index
+          ) => (
+            <motion.div
+              key={
+                item.title
+              }
+              initial={{
+                opacity: 0,
+                y: 20,
+              }}
+              animate={{
+                opacity: 1,
+                y: 0,
+              }}
+              transition={{
+                delay:
+                  index *
+                  0.08,
+              }}
+              className="
                 rounded-2xl
 
                 border
@@ -452,75 +774,87 @@ export default function AdminDashboard() {
 
                 bg-white
 
-                p-3.5
+                p-5
 
-                shadow-[0_4px_14px_rgba(15,23,42,0.07)]
+                shadow-sm
 
-                transition
+                transition-all
+                duration-200
 
-                hover:shadow-[0_7px_18px_rgba(15,23,42,0.11)]
+                hover:-translate-y-1
+                hover:shadow-lg
               "
-          >
-            <div
-              className="
+            >
+              <div
+                className="
                   flex
-                  h-8
-                  w-8
+                  h-11
+                  w-11
 
                   items-center
                   justify-center
 
-                  rounded-lg
+                  rounded-xl
 
-                  bg-[#17285f]
+                  bg-blue-950
 
                   text-yellow-400
                 "
-            >
-              <MaterialIcon name={item.icon} className="text-[16px]" />
-            </div>
+              >
+                <MaterialIcon
+                  name={
+                    item.icon
+                  }
+                  className="
+                    text-[23px]
+                  "
+                />
+              </div>
 
-            <p
-              className="
-                  mt-2.5
+              <p
+                className="
+                  mt-4
 
-                  text-[9px]
-                  font-bold
+                  text-[10px]
+                  font-black
+                  uppercase
+                  tracking-wide
 
-                  text-slate-500
+                  text-gray-500
                 "
-            >
-              {item.title}
-            </p>
+              >
+                {
+                  item.title
+                }
+              </p>
 
-            <p
-              className="
+              <h2
+                className="
                   mt-1
 
-                  text-[23px]
+                  text-3xl
                   font-black
-                  leading-none
 
-                  text-[#14285f]
+                  text-blue-950
                 "
-            >
-              {loading ? "—" : item.value}
-            </p>
-          </motion.div>
-        ))}
+              >
+                {loading
+                  ? "..."
+                  : item.value}
+              </h2>
+            </motion.div>
+          )
+        )}
       </div>
 
       {/* =================================================
           EVENT CALENDAR
-
-          ONLY WIDTH IS REDUCED.
-          CALENDAR FUNCTIONALITY REMAINS.
       ================================================= */}
 
       <motion.div
         initial={{
           opacity: 0,
-          y: 12,
+          y: 20,
         }}
         animate={{
           opacity: 1,
@@ -529,12 +863,6 @@ export default function AdminDashboard() {
         transition={{
           delay: 0.2,
         }}
-        className="
-          mx-auto
-
-          w-full
-          max-w-[1050px]
-        "
       >
         <AdminEventCalendar />
       </motion.div>
@@ -543,10 +871,10 @@ export default function AdminDashboard() {
           PENDING APPROVALS
       ================================================= */}
 
-      <motion.section
+      <motion.div
         initial={{
           opacity: 0,
-          y: 12,
+          y: 20,
         }}
         animate={{
           opacity: 1,
@@ -556,18 +884,15 @@ export default function AdminDashboard() {
           delay: 0.25,
         }}
         className="
-          mx-auto
-
-          w-full
-          max-w-[1050px]
-
-          rounded-2xl
+          rounded-3xl
 
           bg-white
 
           p-5
 
-          shadow-[0_4px_14px_rgba(15,23,42,0.07)]
+          shadow-sm
+
+          sm:p-6
         "
       >
         {/* HEADER */}
@@ -575,15 +900,19 @@ export default function AdminDashboard() {
         <div
           className="
             flex
-            items-center
-            justify-between
-            gap-4
+            flex-col
+
+            gap-2
+
+            sm:flex-row
+            sm:items-center
+            sm:justify-between
           "
         >
           <div>
             <h2
               className="
-                text-[17px]
+                text-xl
                 font-black
 
                 text-blue-950
@@ -594,14 +923,15 @@ export default function AdminDashboard() {
 
             <p
               className="
-                mt-0.5
+                mt-1
 
                 text-[10px]
-
-                text-gray-400
+                text-gray-500
               "
             >
-              Event requests that require Administrator review.
+              Event requests that
+              require Administrator
+              review.
             </p>
           </div>
 
@@ -609,11 +939,10 @@ export default function AdminDashboard() {
             className="
               flex
               items-center
-              gap-1.5
+              gap-2
 
-              text-[9px]
+              text-[10px]
               font-black
-
               text-yellow-600
             "
           >
@@ -627,271 +956,444 @@ export default function AdminDashboard() {
                 bg-yellow-400
               "
             />
+
             Requires Action
           </div>
         </div>
 
-        {/* =================================================
-            PENDING LIST
-        ================================================= */}
+        {/* ===============================================
+            LOADING
+        =============================================== */}
 
         {loading ? (
           <div
             className="
-              mt-4
+              flex
+              min-h-[180px]
 
-              rounded-xl
+              items-center
+              justify-center
 
-              bg-gray-50
-
-              py-7
-
-              text-center
-
-              text-xs
               text-gray-400
             "
           >
-            Loading pending approvals...
+            <MaterialIcon
+              name="progress_activity"
+              className="
+                animate-spin
+
+                text-[28px]
+              "
+            />
           </div>
-        ) : pendingBookings.length > 0 ? (
+        ) : visiblePending.length >
+          0 ? (
+          /* =============================================
+             ITEMS
+          ============================================= */
+
           <div
             className="
-              mt-4
-              space-y-2.5
+              mt-5
+
+              space-y-3
             "
           >
-            {pendingBookings.slice(0, 5).map((booking) => {
-              const organization = getOrganizationName(booking.organization);
-
-              return (
-                <div
-                  key={booking._id}
+            {visiblePending.map(
+              (
+                booking,
+                index
+              ) => (
+                <motion.div
+                  key={
+                    booking._id
+                  }
+                  initial={{
+                    opacity: 0,
+                    y: 10,
+                  }}
+                  animate={{
+                    opacity: 1,
+                    y: 0,
+                  }}
+                  transition={{
+                    delay:
+                      index *
+                      0.05,
+                  }}
                   className="
-                        flex
-                        flex-col
-                        gap-3
+                    group
 
-                        rounded-xl
+                    flex
+                    flex-col
 
-                        border
-                        border-gray-100
+                    gap-4
 
-                        bg-gray-50/80
+                    rounded-2xl
 
-                        px-4
-                        py-3
+                    border
+                    border-gray-200
 
-                        sm:flex-row
-                        sm:items-center
-                        sm:justify-between
-                      "
+                    bg-gray-50
+
+                    p-4
+
+                    transition-all
+                    duration-200
+
+                    hover:border-yellow-300
+                    hover:bg-yellow-50/40
+                    hover:shadow-md
+
+                    md:flex-row
+                    md:items-center
+                    md:justify-between
+                  "
                 >
+                  {/* =====================================
+                      LEFT
+                  ====================================== */}
+
                   <div
                     className="
-                          flex
-                          min-w-0
-                          items-start
-                          gap-3
-                        "
+                      flex
+                      min-w-0
+                      flex-1
+
+                      items-start
+                      gap-3
+                    "
                   >
                     <div
                       className="
-                            flex
-                            h-9
-                            w-9
-                            shrink-0
+                        flex
+                        h-10
+                        w-10
+                        shrink-0
 
-                            items-center
-                            justify-center
+                        items-center
+                        justify-center
 
-                            rounded-lg
+                        rounded-xl
 
-                            bg-yellow-100
+                        bg-yellow-100
 
-                            text-yellow-600
-                          "
+                        text-yellow-600
+
+                        transition
+
+                        group-hover:bg-yellow-200
+                      "
                     >
                       <MaterialIcon
                         name="pending_actions"
-                        className="text-[17px]"
+                        className="
+                          text-[22px]
+                        "
                       />
                     </div>
 
                     <div
                       className="
-                            min-w-0
-                          "
+                        min-w-0
+                      "
                     >
                       <h3
                         className="
-                              truncate
+                          truncate
 
-                              text-[12px]
-                              font-black
+                          text-sm
+                          font-black
 
-                              text-blue-950
-                            "
+                          text-blue-950
+                        "
                       >
-                        {booking.eventName || "Event Booking"}
+                        {booking.eventName ||
+                          "Event Request"}
                       </h3>
 
                       <p
                         className="
-                              mt-0.5
+                          mt-0.5
 
-                              text-[10px]
-                              font-bold
-
-                              text-blue-700
-                            "
+                          text-[10px]
+                          font-bold
+                          text-blue-700
+                        "
                       >
-                        {organization}
+                        {getOrganizationName(
+                          booking
+                        )}
+
+                        {getOrganizationAcronym(
+                          booking
+                        ) && (
+                          <>
+                            {" "}
+                            (
+                            {getOrganizationAcronym(
+                              booking
+                            )}
+                            )
+                          </>
+                        )}
                       </p>
+
+                      {/* META */}
 
                       <div
                         className="
-                              mt-1
+                          mt-2
 
-                              flex
-                              flex-wrap
-                              gap-x-3
-                              gap-y-1
+                          flex
+                          flex-wrap
+                          items-center
 
-                              text-[9px]
+                          gap-x-4
+                          gap-y-2
 
-                              text-gray-500
-                            "
+                          text-[9px]
+                          text-gray-500
+                        "
                       >
-                        {booking.eventDate && (
-                          <span
+                        <span
+                          className="
+                            flex
+                            items-center
+                            gap-1
+                          "
+                        >
+                          <MaterialIcon
+                            name="calendar_month"
                             className="
-                                  flex
-                                  items-center
-                                  gap-1
-                                "
-                          >
-                            <MaterialIcon
-                              name="calendar_month"
-                              className="text-[13px]"
-                            />
+                              text-[15px]
+                            "
+                          />
 
-                            {formatDate(booking.eventDate)}
-                          </span>
-                        )}
+                          {formatDate(
+                            booking.eventDate
+                          )}
+                        </span>
 
-                        {booking.venue && (
-                          <span
+                        <span
+                          className="
+                            flex
+                            items-center
+                            gap-1
+                          "
+                        >
+                          <MaterialIcon
+                            name="location_on"
                             className="
-                                  flex
-                                  items-center
-                                  gap-1
-                                "
-                          >
-                            <MaterialIcon
-                              name="location_on"
-                              className="text-[13px]"
-                            />
+                              text-[15px]
+                            "
+                          />
 
-                            {booking.venue}
-                          </span>
-                        )}
+                          {booking.venue ||
+                            "Venue not set"}
+                        </span>
 
-                        {(booking.startTime || booking.endTime) && (
-                          <span
+                        <span
+                          className="
+                            flex
+                            items-center
+                            gap-1
+                          "
+                        >
+                          <MaterialIcon
+                            name="schedule"
                             className="
-                                  flex
-                                  items-center
-                                  gap-1
-                                "
-                          >
-                            <MaterialIcon
-                              name="schedule"
-                              className="text-[13px]"
-                            />
+                              text-[15px]
+                            "
+                          />
 
-                            {formatTime(booking.startTime, booking.endTime)}
-                          </span>
-                        )}
+                          {formatTime(
+                            booking.startTime
+                          )}
+
+                          {booking.endTime
+                            ? ` - ${formatTime(
+                                booking.endTime
+                              )}`
+                            : ""}
+                        </span>
                       </div>
                     </div>
                   </div>
 
-                  <Link
-                    to="/admin/events"
+                  {/* =====================================
+                      REVIEW BUTTON
+                  ====================================== */}
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      reviewBooking(
+                        booking
+                      )
+                    }
                     className="
-                          flex
-                          h-8
-                          shrink-0
+                      group/review
 
-                          items-center
-                          justify-center
-                          gap-1
+                      flex
+                      w-full
+                      min-w-[145px]
 
-                          rounded-lg
+                      items-center
+                      justify-center
+                      gap-2
 
-                          bg-[#17285f]
+                      rounded-xl
 
-                          px-3
+                      border
+                      border-yellow-300
 
-                          text-[10px]
-                          font-black
-                          text-white
+                      bg-gradient-to-r
+                      from-yellow-300
+                      via-yellow-400
+                      to-amber-400
 
-                          transition
+                      px-5
+                      py-3
 
-                          hover:bg-blue-900
-                        "
+                      text-[12px]
+                      font-black
+                      text-blue-950
+
+                      shadow-md
+                      shadow-yellow-400/20
+
+                      transition-all
+                      duration-200
+
+                      hover:-translate-y-0.5
+                      hover:scale-[1.03]
+                      hover:from-yellow-400
+                      hover:via-yellow-400
+                      hover:to-yellow-500
+
+                      hover:shadow-lg
+                      hover:shadow-yellow-400/30
+
+                      active:translate-y-0
+                      active:scale-[0.97]
+
+                      focus:outline-none
+                      focus-visible:ring-4
+                      focus-visible:ring-yellow-200
+
+                      md:w-auto
+                    "
                   >
-                    Review
+                    <MaterialIcon
+                      name="rate_review"
+                      className="
+                        text-[20px]
+
+                        transition-transform
+                        duration-200
+
+                        group-hover/review:scale-110
+                      "
+                    />
+
+                    <span>
+                      Review
+                    </span>
+
                     <MaterialIcon
                       name="arrow_forward"
-                      className="text-[13px]"
-                    />
-                  </Link>
-                </div>
-              );
-            })}
+                      className="
+                        text-[18px]
 
-            {pendingBookings.length > 5 && (
-              <div
+                        transition-transform
+                        duration-200
+
+                        group-hover/review:translate-x-1
+                      "
+                    />
+                  </button>
+                </motion.div>
+              )
+            )}
+
+            {/* =============================================
+                VIEW ALL
+            ============================================= */}
+
+            {pendingBookings.length >
+              visiblePending.length && (
+              <button
+                type="button"
+                onClick={() =>
+                  navigate(
+                    "/admin/events"
+                  )
+                }
                 className="
+                  mt-2
+
                   flex
+                  w-full
+
+                  items-center
                   justify-center
-                  pt-2
+                  gap-2
+
+                  rounded-xl
+
+                  border
+                  border-blue-100
+
+                  bg-blue-50
+
+                  px-4
+                  py-3
+
+                  text-xs
+                  font-black
+                  text-blue-950
+
+                  transition
+
+                  hover:bg-blue-100
                 "
               >
-                <Link
-                  to="/admin/events"
+                View All Pending
+                Approvals
+
+                <MaterialIcon
+                  name="arrow_forward"
                   className="
-                    text-[10px]
-                    font-black
-
-                    text-blue-700
-
-                    hover:underline
+                    text-[17px]
                   "
-                >
-                  View all pending approvals
-                </Link>
-              </div>
+                />
+              </button>
             )}
           </div>
         ) : (
+          /* =============================================
+             EMPTY
+          ============================================= */
+
           <div
             className="
-              mt-4
+              mt-5
 
               flex
+              min-h-[150px]
+
               flex-col
               items-center
               justify-center
 
-              rounded-xl
+              rounded-2xl
+
+              border
+              border-dashed
+              border-gray-200
 
               bg-gray-50
-
-              py-7
 
               text-center
             "
@@ -899,48 +1401,64 @@ export default function AdminDashboard() {
             <div
               className="
                 flex
-                h-9
-                w-9
+                h-11
+                w-11
 
                 items-center
                 justify-center
 
-                rounded-full
+                rounded-xl
 
                 bg-green-100
 
                 text-green-600
               "
             >
-              <MaterialIcon name="check_circle" className="text-[18px]" />
+              <MaterialIcon
+                name="task_alt"
+                className="
+                  text-[24px]
+                "
+              />
             </div>
+
+            <h3
+              className="
+                mt-3
+
+                text-sm
+                font-black
+
+                text-blue-950
+              "
+            >
+              No Pending Approvals
+            </h3>
 
             <p
               className="
-                mt-2
+                mt-1
 
-                text-[11px]
-                font-bold
-
+                text-[10px]
                 text-gray-500
               "
             >
-              No pending approvals.
+              All event booking
+              requests have been
+              reviewed.
             </p>
           </div>
         )}
-      </motion.section>
+      </motion.div>
 
       {/* =================================================
           RECENT ACTIVITIES
-
-          THIS WAS ALSO IN THE OLD DASHBOARD
       ================================================= */}
 
-      <motion.section
+      <motion.div
         initial={{
           opacity: 0,
-          y: 12,
+          y: 20,
         }}
         animate={{
           opacity: 1,
@@ -950,65 +1468,63 @@ export default function AdminDashboard() {
           delay: 0.3,
         }}
         className="
-          mx-auto
-
-          w-full
-          max-w-[1050px]
-
-          rounded-2xl
+          rounded-3xl
 
           bg-white
 
           p-5
 
-          shadow-[0_4px_14px_rgba(15,23,42,0.07)]
+          shadow-sm
+
+          sm:p-6
         "
       >
-        <div>
-          <h2
-            className="
-              text-[17px]
-              font-black
+        <h2
+          className="
+            text-xl
+            font-black
 
-              text-blue-950
-            "
-          >
-            Recent Activities
-          </h2>
+            text-blue-950
+          "
+        >
+          Recent Activities
+        </h2>
 
-          <p
-            className="
-              mt-0.5
+        <p
+          className="
+            mt-1
 
-              text-[10px]
-
-              text-gray-400
-            "
-          >
-            Latest activity across NUnified.
-          </p>
-        </div>
+            text-[10px]
+            text-gray-500
+          "
+        >
+          Latest activity across
+          NUnified.
+        </p>
 
         {loading ? (
           <div
             className="
-              mt-4
+              flex
+              min-h-[150px]
 
-              rounded-xl
+              items-center
+              justify-center
 
-              bg-gray-50
-
-              py-7
-
-              text-center
-
-              text-xs
               text-gray-400
             "
           >
-            Loading recent activity...
+            <MaterialIcon
+              name="progress_activity"
+              className="
+                animate-spin
+
+                text-[28px]
+              "
+            />
           </div>
-        ) : recentActivities.length > 0 ? (
+        ) : recentActivities.length >
+          0 ? (
           <div
             className="
               mt-4
@@ -1017,25 +1533,27 @@ export default function AdminDashboard() {
               divide-gray-100
             "
           >
-            {recentActivities.map((activity) => (
-              <div
-                key={activity.id}
-                className="
+            {recentActivities.map(
+              (
+                activity
+              ) => (
+                <div
+                  key={
+                    activity.id
+                  }
+                  className="
                     flex
-                    items-center
+                    items-start
                     gap-3
 
                     py-3
-
-                    first:pt-0
-                    last:pb-0
                   "
-              >
-                <div
-                  className="
+                >
+                  <div
+                    className={`
                       flex
-                      h-8
-                      w-8
+                      h-9
+                      w-9
                       shrink-0
 
                       items-center
@@ -1043,67 +1561,76 @@ export default function AdminDashboard() {
 
                       rounded-lg
 
-                      bg-blue-50
-
-                      text-blue-800
-                    "
-                >
-                  <MaterialIcon name={activity.icon} className="text-[15px]" />
-                </div>
-
-                <div
-                  className="
-                      min-w-0
-                      flex-1
-                    "
-                >
-                  <p
-                    className="
-                        text-[11px]
-                        font-semibold
-
-                        text-gray-700
-                      "
+                      ${
+                        activity.type ===
+                        "post"
+                          ? `
+                            bg-blue-50
+                            text-blue-600
+                          `
+                          : `
+                            bg-indigo-50
+                            text-indigo-600
+                          `
+                      }
+                    `}
                   >
-                    {activity.title}
-                  </p>
+                    <MaterialIcon
+                      name={
+                        activity.icon
+                      }
+                      className="
+                        text-[19px]
+                      "
+                    />
+                  </div>
 
-                  <p
-                    className="
-                        mt-0.5
+                  <div>
+                    <p
+                      className="
+                        text-[11px]
+                        font-medium
+
+                        text-blue-950
+                      "
+                    >
+                      {
+                        activity.text
+                      }
+                    </p>
+
+                    <p
+                      className="
+                        mt-1
 
                         text-[9px]
-
                         text-gray-400
                       "
-                  >
-                    {activity.date ? formatDate(activity.date) : "Recently"}
-                  </p>
+                    >
+                      {formatDate(
+                        activity.createdAt
+                      )}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            ))}
+              )
+            )}
           </div>
         ) : (
           <div
             className="
-              mt-4
-
-              rounded-xl
-
-              bg-gray-50
-
-              py-7
+              py-10
 
               text-center
 
-              text-[11px]
+              text-sm
               text-gray-400
             "
           >
-            No recent activities yet.
+            No recent activities.
           </div>
         )}
-      </motion.section>
+      </motion.div>
     </div>
   );
 }

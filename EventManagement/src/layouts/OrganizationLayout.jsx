@@ -40,69 +40,39 @@ function MaterialIcon({
 
 const navigationItems = [
   {
-    label:
-      "Dashboard",
-
-    icon:
-      "dashboard",
-
-    to:
-      "/organization/dashboard",
+    label: "Dashboard",
+    icon: "dashboard",
+    to: "/organization/dashboard",
   },
 
   {
-    label:
-      "Event Booking",
-
-    icon:
-      "event_available",
-
-    to:
-      "/organization/booking",
+    label: "Event Booking",
+    icon: "event_available",
+    to: "/organization/booking",
   },
 
   {
-    label:
-      "Booking Status",
-
-    icon:
-      "fact_check",
-
-    to:
-      "/organization/status",
+    label: "Booking Status",
+    icon: "fact_check",
+    to: "/organization/status",
   },
 
   {
-    label:
-      "Create Post",
-
-    icon:
-      "campaign",
-
-    to:
-      "/organization/create-post",
+    label: "Create Post",
+    icon: "campaign",
+    to: "/organization/create-post",
   },
 
   {
-    label:
-      "Admin Request",
-
-    icon:
-      "support_agent",
-
-    to:
-      "/organization/admin-request",
+    label: "Admin Request",
+    icon: "support_agent",
+    to: "/organization/admin-request",
   },
 
   {
-    label:
-      "Profile",
-
-    icon:
-      "account_circle",
-
-    to:
-      "/organization/profile",
+    label: "Profile",
+    icon: "account_circle",
+    to: "/organization/profile",
   },
 ];
 
@@ -192,11 +162,6 @@ export default function OrganizationLayout() {
           "LOAD ORGANIZATION LAYOUT ERROR:",
           error
         );
-
-        /*
-          Fallback to localStorage user
-          so the layout still displays.
-        */
 
         try {
           const stored =
@@ -408,6 +373,9 @@ export default function OrganizationLayout() {
 
       {/* =================================================
           SIDEBAR
+
+          SAME WIDTH AS ADMIN:
+          w-72 = 288px
       ================================================= */}
 
       <aside
@@ -420,7 +388,7 @@ export default function OrganizationLayout() {
           z-[90]
 
           flex
-          w-[258px]
+          w-72
           flex-col
 
           bg-gradient-to-b
@@ -428,8 +396,8 @@ export default function OrganizationLayout() {
           via-[#002A50]
           to-[#004B85]
 
-          px-4
-          py-5
+          px-5
+          py-6
 
           text-white
 
@@ -458,7 +426,7 @@ export default function OrganizationLayout() {
             border-b
             border-white/10
 
-            pb-5
+            pb-6
           "
         >
           <img
@@ -467,11 +435,11 @@ export default function OrganizationLayout() {
             }
             alt="NUnified Logo"
             className="
-              h-12
-              w-12
+              h-14
+              w-14
               shrink-0
 
-              rounded-[14px]
+              rounded-2xl
 
               object-cover
               object-center
@@ -483,12 +451,17 @@ export default function OrganizationLayout() {
             "
           />
 
-          <div>
+          <div
+            className="
+              min-w-0
+            "
+          >
             <h1
               className="
                 text-[20px]
                 font-black
                 tracking-tight
+                text-white
               "
             >
               NUnified
@@ -496,6 +469,8 @@ export default function OrganizationLayout() {
 
             <p
               className="
+                mt-0.5
+
                 text-[9px]
                 text-blue-100
               "
@@ -511,21 +486,21 @@ export default function OrganizationLayout() {
 
         <div
           className="
-            mt-5
+            mt-6
 
             flex
             items-center
             gap-3
 
-            rounded-[15px]
+            rounded-2xl
 
             border
             border-white/15
 
             bg-white/5
 
-            px-3
-            py-3
+            px-4
+            py-4
 
             shadow-sm
           "
@@ -540,7 +515,7 @@ export default function OrganizationLayout() {
             color={
               organization.color
             }
-            size="42px"
+            size="46px"
             textSize="13px"
           />
 
@@ -552,6 +527,7 @@ export default function OrganizationLayout() {
             <p
               className="
                 truncate
+
                 text-[12px]
                 font-black
                 text-white
@@ -564,7 +540,8 @@ export default function OrganizationLayout() {
 
             <p
               className="
-                mt-0.5
+                mt-1
+
                 text-[9px]
                 font-medium
                 text-blue-200
@@ -583,14 +560,14 @@ export default function OrganizationLayout() {
 
         <div
           className="
-            mt-6
+            mt-7
           "
         >
           <p
             className="
               px-2
 
-              text-[8px]
+              text-[9px]
               font-black
               uppercase
               tracking-[0.18em]
@@ -604,7 +581,7 @@ export default function OrganizationLayout() {
           <nav
             className="
               mt-3
-              space-y-1.5
+              space-y-2
             "
           >
             {navigationItems.map(
@@ -630,12 +607,12 @@ export default function OrganizationLayout() {
                     items-center
                     gap-3
 
-                    rounded-[11px]
+                    rounded-xl
 
-                    px-3
-                    py-3
+                    px-4
+                    py-3.5
 
-                    text-[11px]
+                    text-[12px]
                     font-bold
 
                     transition-all
@@ -650,6 +627,7 @@ export default function OrganizationLayout() {
                         `
                         : `
                           text-white
+
                           hover:bg-white/10
                         `
                     }
@@ -664,7 +642,7 @@ export default function OrganizationLayout() {
                           item.icon
                         }
                         className={`
-                          text-[19px]
+                          text-[20px]
 
                           ${
                             isActive
@@ -698,7 +676,7 @@ export default function OrganizationLayout() {
             border-t
             border-white/10
 
-            pt-4
+            pt-5
           "
         >
           <button
@@ -709,6 +687,7 @@ export default function OrganizationLayout() {
             className="
               flex
               w-full
+
               items-center
               justify-center
               gap-2
@@ -717,16 +696,17 @@ export default function OrganizationLayout() {
 
               bg-yellow-400
 
-              px-4
-              py-3
+              px-5
+              py-3.5
 
-              text-[12px]
+              text-[13px]
               font-bold
               text-blue-950
 
               shadow-md
 
-              transition
+              transition-colors
+              duration-200
 
               hover:bg-yellow-300
             "
@@ -734,7 +714,7 @@ export default function OrganizationLayout() {
             <MaterialIcon
               name="logout"
               className="
-                text-[18px]
+                text-[19px]
               "
             />
 
@@ -751,20 +731,24 @@ export default function OrganizationLayout() {
               text-blue-200
             "
           >
-            NUnified Event Management
+            NUnified Event
+            Management
           </p>
         </div>
       </aside>
 
       {/* =================================================
           CONTENT AREA
+
+          MATCH SIDEBAR WIDTH:
+          lg:pl-72 = 288px
       ================================================= */}
 
       <div
         className="
           min-h-screen
 
-          lg:pl-[258px]
+          lg:pl-72
         "
       >
         {/* ===============================================
@@ -779,6 +763,7 @@ export default function OrganizationLayout() {
 
             flex
             h-[72px]
+
             items-center
             justify-between
 
@@ -797,6 +782,7 @@ export default function OrganizationLayout() {
           <div
             className="
               flex
+              min-w-0
               items-center
               gap-3
             "
@@ -812,6 +798,8 @@ export default function OrganizationLayout() {
                 flex
                 h-9
                 w-9
+                shrink-0
+
                 items-center
                 justify-center
 
@@ -831,7 +819,11 @@ export default function OrganizationLayout() {
               />
             </button>
 
-            <div>
+            <div
+              className="
+                min-w-0
+              "
+            >
               <p
                 className="
                   text-[9px]
@@ -847,6 +839,9 @@ export default function OrganizationLayout() {
               <h2
                 className="
                   mt-1
+
+                  truncate
+
                   text-[15px]
                   font-black
                   text-blue-950
@@ -866,6 +861,7 @@ export default function OrganizationLayout() {
           <div
             className="
               flex
+              shrink-0
               items-center
               gap-3
             "
@@ -960,6 +956,7 @@ function Avatar({
       className="
         flex
         shrink-0
+
         items-center
         justify-center
 

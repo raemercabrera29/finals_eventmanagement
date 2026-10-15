@@ -27,8 +27,15 @@ const PREPARATION_BUFFER_MINUTES =
 const MAX_FILE_SIZE =
   5 * 1024 * 1024;
 
+/*
+  HARD MAXIMUM PARTICIPANTS
+*/
+
+const MAX_PARTICIPANTS =
+  150;
+
 /* =====================================================
-   FILE PATHS
+   FILE PATH
 ===================================================== */
 
 const __filename =
@@ -56,8 +63,10 @@ if (
 ) {
   fs.mkdirSync(
     uploadDirectory,
+
     {
-      recursive: true,
+      recursive:
+        true,
     }
   );
 }
@@ -69,7 +78,9 @@ if (
 function cleanupFiles(
   files
 ) {
-  if (!files) {
+  if (
+    !files
+  ) {
     return;
   }
 
@@ -78,7 +89,9 @@ function cleanupFiles(
       files
     )
       .flat()
-      .filter(Boolean);
+      .filter(
+        Boolean
+      );
 
   for (
     const file
@@ -107,7 +120,7 @@ function cleanupFiles(
 }
 
 /* =====================================================
-   VERIFY REAL PDF
+   VERIFY PDF SIGNATURE
 ===================================================== */
 
 function hasPdfSignature(
@@ -199,6 +212,7 @@ const storage =
       const rawName =
         path.basename(
           file.originalname,
+
           path.extname(
             file.originalname
           )
@@ -221,16 +235,17 @@ const storage =
 
       callback(
         null,
+
         `${Date.now()}-${Math.round(
           Math.random() *
-            1e9
+          1e9
         )}-${safeName}${extension}`
       );
     },
   });
 
 /* =====================================================
-   PDF ONLY
+   PDF UPLOAD
 ===================================================== */
 
 const upload =
@@ -260,7 +275,9 @@ const upload =
         extension ===
           ".pdf";
 
-      if (!valid) {
+      if (
+        !valid
+      ) {
         return callback(
           new Error(
             "Only PDF files are allowed for the Approved Project Proposal and Approved ARF."
@@ -295,13 +312,15 @@ const uploadDocuments =
   ]);
 
 /* =====================================================
-   TIME HELPERS
+   TIME TO MINUTES
 ===================================================== */
 
 function timeToMinutes(
   value
 ) {
-  if (!value) {
+  if (
+    !value
+  ) {
     return null;
   }
 
@@ -336,16 +355,21 @@ function timeToMinutes(
     !Number.isInteger(
       minutes
     ) ||
-    hours < 0 ||
-    hours > 23 ||
-    minutes < 0 ||
-    minutes > 59
+    hours <
+      0 ||
+    hours >
+      23 ||
+    minutes <
+      0 ||
+    minutes >
+      59
   ) {
     return null;
   }
 
   return (
-    hours * 60 +
+    hours *
+      60 +
     minutes
   );
 }
@@ -399,18 +423,108 @@ function getDayRange(
 }
 
 /* =====================================================
+   VENUE NORMALIZATION
+
+   This also fixes:
+   MPH
+   Multipurpose Hall
+
+   being treated as different venues.
+===================================================== */
+
+function normalizeVenue(
+  value
+) {
+  const raw =
+    String(
+      value ||
+      ""
+    ).trim();
+
+  const venue =
+    raw.toLowerCase();
+
+  if (
+    venue ===
+      "mph" ||
+    venue ===
+      "multipurpose hall" ||
+    venue ===
+      "multi purpose hall"
+  ) {
+    return "Multipurpose Hall";
+  }
+
+  if (
+    venue ===
+    "avr"
+  ) {
+    return "AVR";
+  }
+
+  if (
+    venue ===
+      "gym" ||
+    venue ===
+      "gymnasium"
+  ) {
+    return "Gymnasium";
+  }
+
+  return raw;
+}
+
+/* =====================================================
+   VENUE ALIASES
+===================================================== */
+
+function getVenueAliases(
+  value
+) {
+  const normalized =
+    normalizeVenue(
+      value
+    );
+
+  if (
+    normalized ===
+    "Multipurpose Hall"
+  ) {
+    return [
+      "Multipurpose Hall",
+      "MPH",
+      "Multi Purpose Hall",
+    ];
+  }
+
+  if (
+    normalized ===
+    "AVR"
+  ) {
+    return [
+      "AVR",
+    ];
+  }
+
+  if (
+    normalized ===
+    "Gymnasium"
+  ) {
+    return [
+      "Gymnasium",
+      "Gym",
+    ];
+  }
+
+  return [
+    normalized,
+  ];
+}
+
+/* =====================================================
    SCHEDULE CONFLICT
 
-   Example:
-
-   Existing:
-   7:00 AM - 10:00 AM
-
-   Buffer:
-   10:00 AM - 11:00 AM
-
-   Next event:
-   11:00 AM ✅
+   1-hour preparation buffer.
 ===================================================== */
 
 function schedulesConflict({
@@ -490,15 +604,34 @@ async function findConflict({
       eventDate
     );
 
-  if (!range) {
+  if (
+    !range
+  ) {
     return {
       invalidDate:
         true,
     };
   }
 
+  /*
+    Check all aliases.
+
+    Example:
+
+    Multipurpose Hall
+    MPH
+
+    are treated as the
+    same venue.
+  */
+
   const query = {
-    venue,
+    venue: {
+      $in:
+        getVenueAliases(
+          venue
+        ),
+    },
 
     status:
       "approved",
@@ -594,8 +727,10 @@ function validateSchedule({
     );
 
   if (
-    start === null ||
-    end === null
+    start ===
+      null ||
+    end ===
+      null
   ) {
     return {
       valid:
@@ -607,7 +742,8 @@ function validateSchedule({
   }
 
   if (
-    end <= start
+    end <=
+    start
   ) {
     return {
       valid:
@@ -628,22 +764,6 @@ function validateSchedule({
    CALENDAR
 
    GET /api/bookings/calendar
-
-   ADMIN:
-   Receives complete approved booking objects.
-
-   ORGANIZATION:
-   Receives only safe shared-calendar information:
-
-   - Organization
-   - Date
-   - Start time
-   - End time
-   - Venue
-   - Status
-   - Organization color
-
-   Confidential details are not exposed.
 ===================================================== */
 
 router.get(
@@ -661,35 +781,27 @@ router.get(
     res
   ) => {
     try {
-      /* ===============================================
-         APPROVED BOOKINGS ONLY
-      =============================================== */
-
       const query = {
         status:
           "approved",
       };
 
-      /* ===============================================
-         OPTIONAL VENUE FILTER
-      =============================================== */
+      /*
+        Optional venue filter.
+      */
 
       if (
-        req.query.venue
+        req.query
+          .venue
       ) {
-        query.venue =
-          req.query.venue;
+        query.venue = {
+          $in:
+            getVenueAliases(
+              req.query
+                .venue
+            ),
+        };
       }
-
-      /* ===============================================
-         LOAD APPROVED BOOKINGS
-
-         Booking already stores:
-         eventDate
-         startTime
-         endTime
-         venue
-      =============================================== */
 
       const bookings =
         await Booking.find(
@@ -697,6 +809,7 @@ router.get(
         )
           .populate(
             "organization",
+
             "organizationName acronym color"
           )
           .sort({
@@ -709,13 +822,11 @@ router.get(
 
       /* ===============================================
          ADMIN
-
-         Admin can receive complete approved booking
-         information.
       =============================================== */
 
       if (
-        req.user.role ===
+        req.user
+          .role ===
         "admin"
       ) {
         return res.json(
@@ -724,15 +835,16 @@ router.get(
       }
 
       /* ===============================================
-         ORGANIZATION PRIVACY
-
-         IMPORTANT FIX:
-
-         startTime and endTime are now included.
-
-         Other confidential fields are intentionally
-         not copied into this response.
+         ORGANIZATION SAFE RESPONSE
       =============================================== */
+
+      const currentOrganizationId =
+        req.user
+          ?.organization
+          ?._id ||
+        req.user
+          ?.organization ||
+        "";
 
       const safeBookings =
         bookings.map(
@@ -740,73 +852,36 @@ router.get(
             booking
           ) => {
             const bookingOrganization =
-              booking.organization;
-
-            const currentOrganizationId =
-              req.user
-                ?.organization
-                ?._id ||
-              req.user
-                ?.organization ||
-              "";
-
-            const isMine =
-              String(
-                bookingOrganization
-                  ?._id ||
-                  ""
-              ) ===
-              String(
-                currentOrganizationId
-              );
+              booking
+                .organization;
 
             return {
-              /* =========================================
-                 ID
-              ========================================= */
-
               _id:
-                booking._id,
-
-              /* =========================================
-                 DATE
-              ========================================= */
+                booking
+                  ._id,
 
               eventDate:
-                booking.eventDate,
-
-              /* =========================================
-                 TIME
-
-                 THIS IS THE MAIN FIX
-              ========================================= */
+                booking
+                  .eventDate,
 
               startTime:
-                booking.startTime ||
+                booking
+                  .startTime ||
                 "",
 
               endTime:
-                booking.endTime ||
+                booking
+                  .endTime ||
                 "",
 
-              /* =========================================
-                 VENUE
-              ========================================= */
-
               venue:
-                booking.venue ||
+                booking
+                  .venue ||
                 "Venue not specified",
 
-              /* =========================================
-                 STATUS
-              ========================================= */
-
               status:
-                booking.status,
-
-              /* =========================================
-                 ORGANIZATION
-              ========================================= */
+                booking
+                  .status,
 
               organization: {
                 _id:
@@ -829,50 +904,18 @@ router.get(
                   "#FACC15",
               },
 
-              /* =========================================
-                 OWN BOOKING
-              ========================================= */
-
-              isMine,
+              isMine:
+                String(
+                  bookingOrganization
+                    ?._id ||
+                    ""
+                ) ===
+                String(
+                  currentOrganizationId
+                ),
             };
           }
         );
-
-      /* ===============================================
-         SAFE DEVELOPMENT LOG
-
-         Does not log confidential event information.
-      =============================================== */
-
-      console.log(
-        "ORGANIZATION GENERAL CALENDAR:",
-        safeBookings.map(
-          (
-            booking
-          ) => ({
-            organization:
-              booking
-                .organization
-                ?.organizationName,
-
-            eventDate:
-              booking.eventDate,
-
-            startTime:
-              booking.startTime,
-
-            endTime:
-              booking.endTime,
-
-            venue:
-              booking.venue,
-          })
-        )
-      );
-
-      /* ===============================================
-         RESPONSE
-      =============================================== */
 
       return res.json(
         safeBookings
@@ -886,7 +929,9 @@ router.get(
       );
 
       return res
-        .status(500)
+        .status(
+          500
+        )
         .json({
           message:
             "Unable to load venue calendar.",
@@ -897,6 +942,8 @@ router.get(
 
 /* =====================================================
    CHECK AVAILABILITY
+
+   POST /api/bookings/check-availability
 ===================================================== */
 
 router.post(
@@ -921,10 +968,6 @@ router.post(
       } =
         req.body;
 
-      /* ===============================================
-         REQUIRED
-      =============================================== */
-
       if (
         !venue ||
         !eventDate ||
@@ -944,10 +987,6 @@ router.post(
           });
       }
 
-      /* ===============================================
-         VALIDATE SCHEDULE
-      =============================================== */
-
       const validation =
         validateSchedule({
           eventDate,
@@ -956,7 +995,8 @@ router.post(
         });
 
       if (
-        !validation.valid
+        !validation
+          .valid
       ) {
         return res
           .status(
@@ -967,13 +1007,10 @@ router.post(
               false,
 
             message:
-              validation.message,
+              validation
+                .message,
           });
       }
-
-      /* ===============================================
-         CHECK CONFLICT
-      =============================================== */
 
       const conflict =
         await findConflict({
@@ -994,10 +1031,6 @@ router.post(
             "The selected schedule is unavailable. Please choose another time. A 1-hour cleaning and preparation period is required between events.",
         });
       }
-
-      /* ===============================================
-         AVAILABLE
-      =============================================== */
 
       return res.json({
         available:
@@ -1030,7 +1063,8 @@ router.post(
 );
 
 /* =====================================================
-   ORGANIZATION - MY BOOKINGS
+   ORGANIZATION
+   MY BOOKINGS
 ===================================================== */
 
 router.get(
@@ -1055,6 +1089,7 @@ router.get(
         })
           .populate(
             "organization",
+
             "organizationName acronym color"
           )
           .sort({
@@ -1087,6 +1122,8 @@ router.get(
 
 /* =====================================================
    CREATE BOOKING
+
+   POST /api/bookings
 ===================================================== */
 
 router.post(
@@ -1123,7 +1160,7 @@ router.post(
           ?.[0];
 
       /* ===============================================
-         PROJECT PROPOSAL REQUIRED
+         REQUIRED PROJECT PROPOSAL
       =============================================== */
 
       if (
@@ -1144,7 +1181,7 @@ router.post(
       }
 
       /* ===============================================
-         ARF REQUIRED
+         REQUIRED ARF
       =============================================== */
 
       if (
@@ -1165,12 +1202,13 @@ router.post(
       }
 
       /* ===============================================
-         VERIFY PROJECT PROPOSAL PDF
+         VERIFY PDF
       =============================================== */
 
       if (
         !hasPdfSignature(
-          proposal.path
+          proposal
+            .path
         )
       ) {
         cleanupFiles(
@@ -1187,13 +1225,10 @@ router.post(
           });
       }
 
-      /* ===============================================
-         VERIFY ARF PDF
-      =============================================== */
-
       if (
         !hasPdfSignature(
-          arf.path
+          arf
+            .path
         )
       ) {
         cleanupFiles(
@@ -1211,7 +1246,7 @@ router.post(
       }
 
       /* ===============================================
-         BOOKING DATA
+         BODY
       =============================================== */
 
       const {
@@ -1228,7 +1263,7 @@ router.post(
         req.body;
 
       /* ===============================================
-         REQUIRED BOOKING INFORMATION
+         REQUIRED INFORMATION
       =============================================== */
 
       if (
@@ -1257,7 +1292,7 @@ router.post(
       }
 
       /* ===============================================
-         VALIDATE DATE + TIME
+         DATE + TIME VALIDATION
       =============================================== */
 
       const validation =
@@ -1268,7 +1303,8 @@ router.post(
         });
 
       if (
-        !validation.valid
+        !validation
+          .valid
       ) {
         cleanupFiles(
           req.files
@@ -1280,23 +1316,27 @@ router.post(
           )
           .json({
             message:
-              validation.message,
+              validation
+                .message,
           });
       }
 
+      const normalizedVenue =
+        normalizeVenue(
+          venue
+        );
+
       /* ===============================================
-         CHECK EXISTING APPROVED SCHEDULE
+         CONFLICT CHECK
       =============================================== */
 
       const conflict =
         await findConflict({
           venue:
-            venue.trim(),
+            normalizedVenue,
 
           eventDate,
-
           startTime,
-
           endTime,
         });
 
@@ -1319,27 +1359,57 @@ router.post(
 
       /* ===============================================
          PARTICIPANTS
+         HARD LIMIT: 0 - 150
       =============================================== */
 
-      let participantCount =
-        Number(
-          participants ||
-            0
-        );
+      const participantCount =
+        participants ===
+          undefined ||
+        participants ===
+          null ||
+        String(
+          participants
+        ).trim() ===
+          ""
+          ? 0
+          : Number(
+              participants
+            );
+
+      /*
+        Reject:
+
+        - Negative numbers
+        - Decimals
+        - More than 150
+        - Invalid numbers
+      */
 
       if (
-        Number.isNaN(
+        !Number.isInteger(
           participantCount
         ) ||
         participantCount <
-          0
+          0 ||
+        participantCount >
+          MAX_PARTICIPANTS
       ) {
-        participantCount =
-          0;
+        cleanupFiles(
+          req.files
+        );
+
+        return res
+          .status(
+            400
+          )
+          .json({
+            message:
+              `Expected participants must be between 0 and ${MAX_PARTICIPANTS}.`,
+          });
       }
 
       /* ===============================================
-         CREATE
+         CREATE BOOKING
       =============================================== */
 
       const booking =
@@ -1349,10 +1419,12 @@ router.post(
               .organization,
 
           eventName:
-            eventName.trim(),
+            eventName
+              .trim(),
 
           eventType:
-            eventType.trim(),
+            eventType
+              .trim(),
 
           description:
             description
@@ -1360,7 +1432,7 @@ router.post(
             "",
 
           venue:
-            venue.trim(),
+            normalizedVenue,
 
           eventDate,
 
@@ -1419,15 +1491,13 @@ router.post(
       bookingSaved =
         true;
 
-      /* ===============================================
-         POPULATE ORGANIZATION
-      =============================================== */
-
       const populated =
         await Booking.findById(
-          booking._id
+          booking
+            ._id
         ).populate(
           "organization",
+
           "organizationName acronym color"
         );
 
@@ -1441,10 +1511,6 @@ router.post(
     } catch (
       error
     ) {
-      /* ===============================================
-         REMOVE FILES IF DATABASE SAVE FAILED
-      =============================================== */
-
       if (
         !bookingSaved
       ) {
@@ -1471,7 +1537,8 @@ router.post(
 );
 
 /* =====================================================
-   ADMIN - GET ALL BOOKINGS
+   ADMIN
+   GET ALL BOOKINGS
 ===================================================== */
 
 router.get(
@@ -1492,6 +1559,7 @@ router.get(
         await Booking.find()
           .populate(
             "organization",
+
             "organizationName acronym color email adviser"
           )
           .sort({
@@ -1523,18 +1591,8 @@ router.get(
 );
 
 /* =====================================================
-   ADMIN - RESCHEDULE BOOKING
-
-   PATCH
-   /api/bookings/:id/reschedule
-
-   BODY EXAMPLE:
-
-   {
-     "eventDate": "2026-10-15",
-     "startTime": "11:00",
-     "endTime": "13:00"
-   }
+   ADMIN
+   RESCHEDULE BOOKING
 ===================================================== */
 
 router.patch(
@@ -1558,10 +1616,6 @@ router.patch(
       } =
         req.body;
 
-      /* ===============================================
-         REQUIRED
-      =============================================== */
-
       if (
         !eventDate ||
         !startTime ||
@@ -1577,10 +1631,6 @@ router.patch(
           });
       }
 
-      /* ===============================================
-         VALIDATE
-      =============================================== */
-
       const validation =
         validateSchedule({
           eventDate,
@@ -1589,7 +1639,8 @@ router.patch(
         });
 
       if (
-        !validation.valid
+        !validation
+          .valid
       ) {
         return res
           .status(
@@ -1597,17 +1648,15 @@ router.patch(
           )
           .json({
             message:
-              validation.message,
+              validation
+                .message,
           });
       }
 
-      /* ===============================================
-         FIND BOOKING
-      =============================================== */
-
       const booking =
         await Booking.findById(
-          req.params.id
+          req.params
+            .id
         );
 
       if (
@@ -1624,15 +1673,14 @@ router.patch(
       }
 
       /* ===============================================
-         CHECK CONFLICT
-
-         Current booking is excluded.
+         CHECK NEW SCHEDULE
       =============================================== */
 
       const conflict =
         await findConflict({
           venue:
-            booking.venue,
+            booking
+              .venue,
 
           eventDate,
 
@@ -1641,7 +1689,8 @@ router.patch(
           endTime,
 
           excludeBookingId:
-            booking._id,
+            booking
+              ._id,
         });
 
       if (
@@ -1671,10 +1720,6 @@ router.patch(
           });
       }
 
-      /* ===============================================
-         UPDATE DATE + TIME
-      =============================================== */
-
       booking.eventDate =
         eventDate;
 
@@ -1684,17 +1729,21 @@ router.patch(
       booking.endTime =
         endTime;
 
-      await booking.save();
+      booking.venue =
+        normalizeVenue(
+          booking
+            .venue
+        );
 
-      /* ===============================================
-         POPULATED RESULT
-      =============================================== */
+      await booking.save();
 
       const populated =
         await Booking.findById(
-          booking._id
+          booking
+            ._id
         ).populate(
           "organization",
+
           "organizationName acronym color"
         );
 
@@ -1726,14 +1775,8 @@ router.patch(
 );
 
 /* =====================================================
-   ADMIN - UPDATE STATUS
-
-   Supports:
-
-   pending
-   approved
-   rejected
-   cancelled
+   ADMIN
+   UPDATE STATUS
 ===================================================== */
 
 router.patch(
@@ -1756,10 +1799,6 @@ router.patch(
       } =
         req.body;
 
-      /* ===============================================
-         ALLOWED STATUS
-      =============================================== */
-
       const allowedStatuses = [
         "pending",
         "approved",
@@ -1768,9 +1807,10 @@ router.patch(
       ];
 
       if (
-        !allowedStatuses.includes(
-          status
-        )
+        !allowedStatuses
+          .includes(
+            status
+          )
       ) {
         return res
           .status(
@@ -1782,13 +1822,10 @@ router.patch(
           });
       }
 
-      /* ===============================================
-         FIND BOOKING
-      =============================================== */
-
       const booking =
         await Booking.findById(
-          req.params.id
+          req.params
+            .id
         );
 
       if (
@@ -1805,16 +1842,16 @@ router.patch(
       }
 
       /* ===============================================
-         APPROVAL REQUIREMENTS
+         APPROVING
       =============================================== */
 
       if (
         status ===
         "approved"
       ) {
-        /* =============================================
-           PROJECT PROPOSAL
-        ============================================= */
+        /*
+          Proposal required.
+        */
 
         if (
           !booking
@@ -1831,9 +1868,9 @@ router.patch(
             });
         }
 
-        /* =============================================
-           ARF
-        ============================================= */
+        /*
+          ARF required.
+        */
 
         if (
           !booking
@@ -1850,28 +1887,32 @@ router.patch(
             });
         }
 
-        /* =============================================
-           CHECK SCHEDULE CONFLICT
-
-           Ignore the current booking itself.
-        ============================================= */
+        /*
+          Check against other
+          approved bookings.
+        */
 
         const conflict =
           await findConflict({
             venue:
-              booking.venue,
+              booking
+                .venue,
 
             eventDate:
-              booking.eventDate,
+              booking
+                .eventDate,
 
             startTime:
-              booking.startTime,
+              booking
+                .startTime,
 
             endTime:
-              booking.endTime,
+              booking
+                .endTime,
 
             excludeBookingId:
-              booking._id,
+              booking
+                ._id,
           });
 
         if (
@@ -1886,10 +1927,16 @@ router.patch(
                 "This booking conflicts with another approved event, including the required 1-hour preparation period.",
             });
         }
+
+        booking.venue =
+          normalizeVenue(
+            booking
+              .venue
+          );
       }
 
       /* ===============================================
-         UPDATE STATUS
+         SAVE STATUS
       =============================================== */
 
       booking.status =
@@ -1902,15 +1949,13 @@ router.patch(
 
       await booking.save();
 
-      /* ===============================================
-         RETURN UPDATED BOOKING
-      =============================================== */
-
       const populated =
         await Booking.findById(
-          booking._id
+          booking
+            ._id
         ).populate(
           "organization",
+
           "organizationName acronym color"
         );
 
@@ -1948,10 +1993,6 @@ router.use(
     res,
     next
   ) => {
-    /* ===============================================
-       REMOVE PARTIALLY UPLOADED FILES
-    =============================================== */
-
     cleanupFiles(
       req.files
     );
@@ -1960,10 +2001,6 @@ router.use(
       "Booking upload error:",
       error
     );
-
-    /* ===============================================
-       MULTER ERROR
-    =============================================== */
 
     if (
       error instanceof
@@ -1992,10 +2029,6 @@ router.use(
             error.message,
         });
     }
-
-    /* ===============================================
-       OTHER UPLOAD ERROR
-    =============================================== */
 
     if (
       error

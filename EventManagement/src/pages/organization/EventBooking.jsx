@@ -20,6 +20,9 @@ import api from "../../api/axiosClient.js";
 const MAX_FILE_SIZE =
   5 * 1024 * 1024;
 
+const MAX_PARTICIPANTS =
+  150;
+
 const EVENT_TYPES = [
   "Academic",
   "Organization",
@@ -106,16 +109,15 @@ export default function EventBooking() {
     setMessage,
   ] = useState(null);
 
-  /* ===================================================
-     SCHEDULE AVAILABILITY
-  =================================================== */
-
   const [
     scheduleStatus,
     setScheduleStatus,
   ] = useState({
-    state: "idle",
-    message: "",
+    state:
+      "idle",
+
+    message:
+      "",
   });
 
   /* ===================================================
@@ -125,21 +127,28 @@ export default function EventBooking() {
   const today =
     new Date()
       .toISOString()
-      .split("T")[0];
+      .split(
+        "T"
+      )[0];
 
   /* ===================================================
-     FORM CHANGE
+     NORMAL FORM CHANGE
   =================================================== */
 
   const handleChange =
-    (event) => {
+    (
+      event
+    ) => {
       const {
         name,
         value,
-      } = event.target;
+      } =
+        event.target;
 
       setFormData(
-        (previous) => {
+        (
+          previous
+        ) => {
           if (
             name ===
             "eventType"
@@ -154,17 +163,11 @@ export default function EventBooking() {
                 value ===
                 "Other"
                   ? previous
-                      ?.otherEventType ||
+                      .otherEventType ||
                     ""
                   : "",
             };
           }
-
-          /*
-            When venue/date/time changes,
-            availability will automatically
-            be checked again.
-          */
 
           return {
             ...previous,
@@ -181,206 +184,306 @@ export default function EventBooking() {
     };
 
   /* ===================================================
-     CHECK SCHEDULE
-
-     Backend only considers APPROVED bookings.
-
-     If another organization already has:
-     - same venue
-     - same date
-     - overlapping time
-
-     this becomes unavailable.
+     EXPECTED PARTICIPANTS
+     HARD MAXIMUM = 150
   =================================================== */
 
-  useEffect(() => {
-    const {
-      venue,
-      eventDate,
-      startTime,
-      endTime,
-    } = formData;
+  const handleParticipantsChange =
+    (
+      event
+    ) => {
+      const value =
+        event.target
+          .value;
 
-    /*
-      Do not call API until schedule
-      information is complete.
-    */
+      /*
+        Allow empty field.
+      */
 
-    if (
-      !venue ||
-      !eventDate ||
-      !startTime ||
-      !endTime
-    ) {
-      setScheduleStatus({
-        state:
-          "idle",
+      if (
+        value ===
+        ""
+      ) {
+        setFormData(
+          (
+            previous
+          ) => ({
+            ...previous,
 
-        message:
-          "",
-      });
+            participants:
+              "",
+          })
+        );
 
-      return;
-    }
+        setMessage(
+          null
+        );
 
-    /*
-      Basic client-side time validation.
-    */
+        return;
+      }
 
-    if (
-      startTime >=
-      endTime
-    ) {
-      setScheduleStatus({
-        state:
-          "blocked",
+      const parsedValue =
+        Number(
+          value
+        );
 
-        message:
-          "End Time must be later than Start Time.",
-      });
+      if (
+        !Number.isFinite(
+          parsedValue
+        )
+      ) {
+        return;
+      }
 
-      return;
-    }
+      /*
+        No decimals.
+      */
 
-    let cancelled =
-      false;
+      const wholeNumber =
+        Math.trunc(
+          parsedValue
+        );
 
-    const timer =
-      window.setTimeout(
-        async () => {
-          setScheduleStatus({
-            state:
-              "checking",
+      /*
+        Force value between
+        0 and 150.
+      */
 
-            message:
-              "Checking venue availability...",
-          });
+      const limitedValue =
+        Math.min(
+          MAX_PARTICIPANTS,
 
-          try {
-            const response =
-              await api.post(
-                "/bookings/check-availability",
-                {
-                  venue,
-                  eventDate,
-                  startTime,
-                  endTime,
-                }
-              );
+          Math.max(
+            0,
+            wholeNumber
+          )
+        );
 
-            if (
-              cancelled
-            ) {
-              return;
-            }
+      setFormData(
+        (
+          previous
+        ) => ({
+          ...previous,
 
-            if (
-              response.data
-                ?.available
-            ) {
-              setScheduleStatus({
-                state:
-                  "available",
+          participants:
+            String(
+              limitedValue
+            ),
+        })
+      );
 
-                message:
-                  response.data
-                    ?.message ||
-                  "This venue and schedule are available.",
-              });
+      setMessage(
+        null
+      );
+    };
 
-              return;
-            }
+  /* ===================================================
+     AUTOMATIC SCHEDULE CHECK
+  =================================================== */
 
+  useEffect(
+    () => {
+      const {
+        venue,
+        eventDate,
+        startTime,
+        endTime,
+      } =
+        formData;
+
+      /*
+        Wait until all
+        schedule fields
+        are completed.
+      */
+
+      if (
+        !venue ||
+        !eventDate ||
+        !startTime ||
+        !endTime
+      ) {
+        setScheduleStatus({
+          state:
+            "idle",
+
+          message:
+            "",
+        });
+
+        return;
+      }
+
+      /*
+        Invalid time.
+      */
+
+      if (
+        startTime >=
+        endTime
+      ) {
+        setScheduleStatus({
+          state:
+            "blocked",
+
+          message:
+            "End Time must be later than Start Time.",
+        });
+
+        return;
+      }
+
+      let cancelled =
+        false;
+
+      const timer =
+        window.setTimeout(
+          async () => {
             setScheduleStatus({
               state:
-                "blocked",
+                "checking",
 
               message:
-                response.data
-                  ?.message ||
-                "This venue is already occupied during the selected schedule.",
+                "Checking venue availability...",
             });
-          } catch (
-            error
-          ) {
-            if (
-              cancelled
-            ) {
-              return;
-            }
 
-            console.error(
-              "CHECK AVAILABILITY ERROR:",
-              error
-            );
+            try {
+              const response =
+                await api.post(
+                  "/bookings/check-availability",
 
-            /*
-              400 / 409 can still contain
-              the useful backend message.
-            */
+                  {
+                    venue,
+                    eventDate,
+                    startTime,
+                    endTime,
+                  }
+                );
 
-            const backendMessage =
-              error.response
-                ?.data
-                ?.message;
+              if (
+                cancelled
+              ) {
+                return;
+              }
 
-            const backendAvailable =
-              error.response
-                ?.data
-                ?.available;
+              if (
+                response.data
+                  ?.available
+              ) {
+                setScheduleStatus({
+                  state:
+                    "available",
 
-            if (
-              backendAvailable ===
-              false
-            ) {
+                  message:
+                    response
+                      .data
+                      ?.message ||
+                    "This venue and schedule are available.",
+                });
+
+                return;
+              }
+
               setScheduleStatus({
                 state:
                   "blocked",
 
                 message:
-                  backendMessage ||
-                  "This schedule is unavailable.",
+                  response
+                    .data
+                    ?.message ||
+                  "This venue is already occupied during the selected schedule.",
               });
+            } catch (
+              error
+            ) {
+              if (
+                cancelled
+              ) {
+                return;
+              }
 
-              return;
+              console.error(
+                "CHECK AVAILABILITY ERROR:",
+                error
+              );
+
+              const backendMessage =
+                error.response
+                  ?.data
+                  ?.message;
+
+              const backendAvailable =
+                error.response
+                  ?.data
+                  ?.available;
+
+              if (
+                backendAvailable ===
+                false
+              ) {
+                setScheduleStatus({
+                  state:
+                    "blocked",
+
+                  message:
+                    backendMessage ||
+                    "This schedule is unavailable.",
+                });
+
+                return;
+              }
+
+              setScheduleStatus({
+                state:
+                  "error",
+
+                message:
+                  backendMessage ||
+                  "Unable to check schedule availability.",
+              });
             }
+          },
 
-            setScheduleStatus({
-              state:
-                "error",
+          350
+        );
 
-              message:
-                backendMessage ||
-                "Unable to check schedule availability.",
-            });
-          }
-        },
+      return () => {
+        cancelled =
+          true;
 
-        350
-      );
+        window.clearTimeout(
+          timer
+        );
+      };
+    },
 
-    return () => {
-      cancelled =
-        true;
+    [
+      formData
+        .venue,
 
-      window.clearTimeout(
-        timer
-      );
-    };
-  }, [
-    formData.venue,
-    formData.eventDate,
-    formData.startTime,
-    formData.endTime,
-  ]);
+      formData
+        .eventDate,
+
+      formData
+        .startTime,
+
+      formData
+        .endTime,
+    ]
+  );
 
   /* ===================================================
      PDF VALIDATION
   =================================================== */
 
   const validatePdf =
-    (file) => {
-      if (!file) {
+    (
+      file
+    ) => {
+      if (
+        !file
+      ) {
         return {
           valid:
             false,
@@ -399,7 +502,9 @@ export default function EventBooking() {
             ".pdf"
           );
 
-      if (!isPdf) {
+      if (
+        !isPdf
+      ) {
         return {
           valid:
             false,
@@ -436,12 +541,16 @@ export default function EventBooking() {
   =================================================== */
 
   const handleProposalChange =
-    (event) => {
+    (
+      event
+    ) => {
       const file =
         event.target
           .files?.[0];
 
-      if (!file) {
+      if (
+        !file
+      ) {
         return;
       }
 
@@ -451,14 +560,16 @@ export default function EventBooking() {
         );
 
       if (
-        !validation.valid
+        !validation
+          .valid
       ) {
         setMessage({
           type:
             "error",
 
           text:
-            validation.message,
+            validation
+              .message,
         });
 
         event.target.value =
@@ -477,16 +588,20 @@ export default function EventBooking() {
     };
 
   /* ===================================================
-     ARF
+     APPROVED ARF
   =================================================== */
 
   const handleArfChange =
-    (event) => {
+    (
+      event
+    ) => {
       const file =
         event.target
           .files?.[0];
 
-      if (!file) {
+      if (
+        !file
+      ) {
         return;
       }
 
@@ -496,14 +611,16 @@ export default function EventBooking() {
         );
 
       if (
-        !validation.valid
+        !validation
+          .valid
       ) {
         setMessage({
           type:
             "error",
 
           text:
-            validation.message,
+            validation
+              .message,
         });
 
         event.target.value =
@@ -517,24 +634,6 @@ export default function EventBooking() {
       );
 
       setMessage(
-        null
-      );
-    };
-
-  /* ===================================================
-     REMOVE FILES
-  =================================================== */
-
-  const removeProposal =
-    () => {
-      setProjectProposal(
-        null
-      );
-    };
-
-  const removeArf =
-    () => {
-      setApprovedArf(
         null
       );
     };
@@ -568,21 +667,6 @@ export default function EventBooking() {
 
   /* ===================================================
      FINAL AVAILABILITY CHECK
-
-     This runs again immediately before
-     submitting the booking.
-
-     This protects against this situation:
-
-     Organization A checks schedule.
-     ↓
-     Schedule is available.
-     ↓
-     Organization B gets approved.
-     ↓
-     Organization A presses Submit.
-
-     We check again before submission.
   =================================================== */
 
   const finalAvailabilityCheck =
@@ -591,18 +675,23 @@ export default function EventBooking() {
         const response =
           await api.post(
             "/bookings/check-availability",
+
             {
               venue:
-                formData.venue,
+                formData
+                  .venue,
 
               eventDate:
-                formData.eventDate,
+                formData
+                  .eventDate,
 
               startTime:
-                formData.startTime,
+                formData
+                  .startTime,
 
               endTime:
-                formData.endTime,
+                formData
+                  .endTime,
             }
           );
 
@@ -615,7 +704,8 @@ export default function EventBooking() {
               "blocked",
 
             message:
-              response.data
+              response
+                .data
                 ?.message ||
               "This schedule is no longer available.",
           });
@@ -648,7 +738,7 @@ export default function EventBooking() {
     };
 
   /* ===================================================
-     SUBMIT
+     SUBMIT BOOKING
   =================================================== */
 
   const handleSubmit =
@@ -661,18 +751,34 @@ export default function EventBooking() {
         null
       );
 
+      const eventName =
+        String(
+          formData
+            .eventName ||
+            ""
+        ).trim();
+
+      const selectedType =
+        String(
+          formData
+            .eventType ||
+            ""
+        ).trim();
+
+      const otherType =
+        String(
+          formData
+            .otherEventType ||
+            ""
+        ).trim();
+
       /* ===============================================
          EVENT NAME
       =============================================== */
 
-      const eventName =
-        String(
-          formData
-            ?.eventName ||
-            ""
-        ).trim();
-
-      if (!eventName) {
+      if (
+        !eventName
+      ) {
         setMessage({
           type:
             "error",
@@ -688,14 +794,9 @@ export default function EventBooking() {
          EVENT TYPE
       =============================================== */
 
-      const selectedType =
-        String(
-          formData
-            ?.eventType ||
-            ""
-        ).trim();
-
-      if (!selectedType) {
+      if (
+        !selectedType
+      ) {
         setMessage({
           type:
             "error",
@@ -706,13 +807,6 @@ export default function EventBooking() {
 
         return;
       }
-
-      const otherType =
-        String(
-          formData
-            ?.otherEventType ||
-            ""
-        ).trim();
 
       if (
         selectedType ===
@@ -737,7 +831,7 @@ export default function EventBooking() {
       if (
         !String(
           formData
-            ?.venue ||
+            .venue ||
             ""
         ).trim()
       ) {
@@ -758,7 +852,7 @@ export default function EventBooking() {
 
       if (
         !formData
-          ?.eventDate
+          .eventDate
       ) {
         setMessage({
           type:
@@ -777,9 +871,9 @@ export default function EventBooking() {
 
       if (
         !formData
-          ?.startTime ||
+          .startTime ||
         !formData
-          ?.endTime
+          .endTime
       ) {
         setMessage({
           type:
@@ -793,8 +887,10 @@ export default function EventBooking() {
       }
 
       if (
-        formData.startTime >=
-        formData.endTime
+        formData
+          .startTime >=
+        formData
+          .endTime
       ) {
         setMessage({
           type:
@@ -808,7 +904,42 @@ export default function EventBooking() {
       }
 
       /* ===============================================
-         BLOCK OCCUPIED SCHEDULE
+         PARTICIPANTS
+         0 - 150 ONLY
+      =============================================== */
+
+      const participantCount =
+        formData
+          .participants ===
+        ""
+          ? 0
+          : Number(
+              formData
+                .participants
+            );
+
+      if (
+        !Number.isInteger(
+          participantCount
+        ) ||
+        participantCount <
+          0 ||
+        participantCount >
+          MAX_PARTICIPANTS
+      ) {
+        setMessage({
+          type:
+            "error",
+
+          text:
+            `Expected Participants must be between 0 and ${MAX_PARTICIPANTS}.`,
+        });
+
+        return;
+      }
+
+      /* ===============================================
+         OCCUPIED SCHEDULE
       =============================================== */
 
       if (
@@ -830,8 +961,8 @@ export default function EventBooking() {
       }
 
       /*
-        Check server again before
-        uploading the documents.
+        Check again immediately
+        before submission.
       */
 
       const stillAvailable =
@@ -869,7 +1000,9 @@ export default function EventBooking() {
         return;
       }
 
-      if (!approvedArf) {
+      if (
+        !approvedArf
+      ) {
         setMessage({
           type:
             "error",
@@ -880,10 +1013,6 @@ export default function EventBooking() {
 
         return;
       }
-
-      /* ===============================================
-         FINAL EVENT TYPE
-      =============================================== */
 
       const finalEventType =
         selectedType ===
@@ -910,47 +1039,52 @@ export default function EventBooking() {
 
       payload.append(
         "description",
+
         String(
           formData
-            ?.description ||
+            .description ||
             ""
         ).trim()
       );
 
       payload.append(
         "venue",
-        formData.venue
+        formData
+          .venue
       );
 
       payload.append(
         "eventDate",
-        formData.eventDate
+        formData
+          .eventDate
       );
 
       payload.append(
         "startTime",
-        formData.startTime
+        formData
+          .startTime
       );
 
       payload.append(
         "endTime",
-        formData.endTime
+        formData
+          .endTime
       );
 
       payload.append(
         "participants",
+
         String(
-          formData
-            ?.participants ||
-            ""
-        ).trim()
+          participantCount
+        )
       );
 
       payload.append(
         "request",
+
         String(
           formData
-            ?.request ||
+            .request ||
             ""
         ).trim()
       );
@@ -966,7 +1100,7 @@ export default function EventBooking() {
       );
 
       /* ===============================================
-         SUBMIT
+         POST
       =============================================== */
 
       setSubmitting(
@@ -1004,15 +1138,6 @@ export default function EventBooking() {
           error
         );
 
-        /*
-          Backend also performs conflict
-          validation.
-
-          If another event became approved
-          while the request was being sent,
-          it still cannot be double-booked.
-        */
-
         if (
           error.response
             ?.status ===
@@ -1048,7 +1173,7 @@ export default function EventBooking() {
     };
 
   /* ===================================================
-     SCHEDULE FIELD STYLE
+     SCHEDULE INPUT STYLE
   =================================================== */
 
   const scheduleInputStyle =
@@ -1078,7 +1203,7 @@ export default function EventBooking() {
         `;
 
   /* ===================================================
-     PAGE
+     UI
   =================================================== */
 
   return (
@@ -1129,7 +1254,6 @@ export default function EventBooking() {
             font-black
             uppercase
             tracking-[0.16em]
-
             text-yellow-400
           "
         >
@@ -1231,6 +1355,8 @@ export default function EventBooking() {
               md:grid-cols-2
             "
           >
+            {/* EVENT NAME */}
+
             <div>
               <FieldLabel
                 htmlFor="eventName"
@@ -1258,16 +1384,23 @@ export default function EventBooking() {
                   mt-2
                   h-11
                   w-full
+
                   rounded-xl
                   border
                   border-gray-200
+
                   bg-white
                   px-4
+
                   text-[10px]
                   text-blue-950
+
                   outline-none
+
                   transition
+
                   placeholder:text-gray-400
+
                   focus:border-yellow-400
                   focus:ring-2
                   focus:ring-yellow-100
@@ -1275,9 +1408,7 @@ export default function EventBooking() {
               />
             </div>
 
-            {/* =============================================
-                EVENT TYPE
-            ============================================= */}
+            {/* EVENT TYPE */}
 
             <div>
               <FieldLabel
@@ -1292,8 +1423,7 @@ export default function EventBooking() {
                 name="eventType"
                 value={
                   formData
-                    ?.eventType ||
-                  ""
+                    .eventType
                 }
                 onChange={
                   handleChange
@@ -1302,15 +1432,21 @@ export default function EventBooking() {
                   mt-2
                   h-11
                   w-full
+
                   rounded-xl
                   border
                   border-gray-200
+
                   bg-white
                   px-4
+
                   text-[10px]
                   text-blue-950
+
                   outline-none
+
                   transition
+
                   focus:border-yellow-400
                   focus:ring-2
                   focus:ring-yellow-100
@@ -1321,7 +1457,9 @@ export default function EventBooking() {
                 </option>
 
                 {EVENT_TYPES.map(
-                  (type) => (
+                  (
+                    type
+                  ) => (
                     <option
                       key={
                         type
@@ -1340,8 +1478,10 @@ export default function EventBooking() {
                 </option>
               </select>
 
+              {/* OTHER EVENT TYPE */}
+
               {formData
-                ?.eventType ===
+                .eventType ===
                 "Other" && (
                 <motion.div
                   initial={{
@@ -1366,8 +1506,7 @@ export default function EventBooking() {
                     htmlFor="otherEventType"
                     required
                   >
-                    Specify Other
-                    Event Type
+                    Specify Other Event Type
                   </FieldLabel>
 
                   <input
@@ -1376,8 +1515,7 @@ export default function EventBooking() {
                     name="otherEventType"
                     value={
                       formData
-                        ?.otherEventType ||
-                      ""
+                        .otherEventType
                     }
                     onChange={
                       handleChange
@@ -1390,16 +1528,23 @@ export default function EventBooking() {
                       mt-2
                       h-11
                       w-full
+
                       rounded-xl
                       border
                       border-yellow-300
+
                       bg-yellow-50/50
                       px-4
+
                       text-[10px]
                       text-blue-950
+
                       outline-none
+
                       transition
+
                       placeholder:text-gray-400
+
                       focus:border-yellow-500
                       focus:bg-white
                       focus:ring-2
@@ -1411,9 +1556,7 @@ export default function EventBooking() {
             </div>
           </div>
 
-          {/* ===============================================
-              DESCRIPTION
-          =============================================== */}
+          {/* DESCRIPTION */}
 
           <div
             className="
@@ -1447,18 +1590,26 @@ export default function EventBooking() {
                 mt-2
                 w-full
                 resize-none
+
                 rounded-xl
                 border
                 border-gray-200
+
                 bg-white
+
                 px-4
                 py-3
+
                 text-[10px]
                 leading-5
                 text-blue-950
+
                 outline-none
+
                 transition
+
                 placeholder:text-gray-400
+
                 focus:border-yellow-400
                 focus:ring-2
                 focus:ring-yellow-100
@@ -1506,9 +1657,7 @@ export default function EventBooking() {
               md:grid-cols-2
             "
           >
-            {/* =============================================
-                VENUE
-            ============================================= */}
+            {/* VENUE */}
 
             <div>
               <FieldLabel
@@ -1532,15 +1681,21 @@ export default function EventBooking() {
                   mt-2
                   h-11
                   w-full
+
                   rounded-xl
                   border
                   border-gray-200
+
                   bg-white
                   px-4
+
                   text-[10px]
                   text-blue-950
+
                   outline-none
+
                   transition
+
                   focus:border-yellow-400
                   focus:ring-2
                   focus:ring-yellow-100
@@ -1551,7 +1706,9 @@ export default function EventBooking() {
                 </option>
 
                 {VENUES.map(
-                  (venue) => (
+                  (
+                    venue
+                  ) => (
                     <option
                       key={
                         venue
@@ -1567,9 +1724,7 @@ export default function EventBooking() {
               </select>
             </div>
 
-            {/* =============================================
-                DATE
-            ============================================= */}
+            {/* DATE */}
 
             <div>
               <FieldLabel
@@ -1597,13 +1752,19 @@ export default function EventBooking() {
                   mt-2
                   h-11
                   w-full
+
                   rounded-xl
                   border
+
                   px-4
+
                   text-[10px]
                   text-blue-950
+
                   outline-none
+
                   transition
+
                   focus:ring-2
 
                   ${scheduleInputStyle}
@@ -1611,9 +1772,7 @@ export default function EventBooking() {
               />
             </div>
 
-            {/* =============================================
-                START TIME
-            ============================================= */}
+            {/* START TIME */}
 
             <div>
               <FieldLabel
@@ -1638,13 +1797,19 @@ export default function EventBooking() {
                   mt-2
                   h-11
                   w-full
+
                   rounded-xl
                   border
+
                   px-4
+
                   text-[10px]
                   text-blue-950
+
                   outline-none
+
                   transition
+
                   focus:ring-2
 
                   ${scheduleInputStyle}
@@ -1652,9 +1817,7 @@ export default function EventBooking() {
               />
             </div>
 
-            {/* =============================================
-                END TIME
-            ============================================= */}
+            {/* END TIME */}
 
             <div>
               <FieldLabel
@@ -1679,13 +1842,19 @@ export default function EventBooking() {
                   mt-2
                   h-11
                   w-full
+
                   rounded-xl
                   border
+
                   px-4
+
                   text-[10px]
                   text-blue-950
+
                   outline-none
+
                   transition
+
                   focus:ring-2
 
                   ${scheduleInputStyle}
@@ -1694,27 +1863,27 @@ export default function EventBooking() {
             </div>
           </div>
 
-          {/* ===============================================
-              AVAILABILITY STATUS
-          =============================================== */}
-
           <ScheduleAvailability
             status={
               scheduleStatus
             }
             complete={
               Boolean(
-                formData.venue &&
-                  formData.eventDate &&
-                  formData.startTime &&
-                  formData.endTime
+                formData
+                  .venue &&
+                formData
+                  .eventDate &&
+                formData
+                  .startTime &&
+                formData
+                  .endTime
               )
             }
           />
         </section>
 
         {/* =================================================
-            REQUIRED DOCUMENTS
+            PDF DOCUMENTS
         ================================================= */}
 
         <section
@@ -1746,8 +1915,10 @@ export default function EventBooking() {
               onChange={
                 handleProposalChange
               }
-              onRemove={
-                removeProposal
+              onRemove={() =>
+                setProjectProposal(
+                  null
+                )
               }
             />
 
@@ -1761,8 +1932,10 @@ export default function EventBooking() {
               onChange={
                 handleArfChange
               }
-              onRemove={
-                removeArf
+              onRemove={() =>
+                setApprovedArf(
+                  null
+                )
               }
             />
           </div>
@@ -1788,6 +1961,11 @@ export default function EventBooking() {
               mt-6
             "
           >
+            {/* =================================================
+                EXPECTED PARTICIPANTS
+                MAXIMUM 150
+            ================================================= */}
+
             <div
               className="
                 max-w-[420px]
@@ -1803,37 +1981,115 @@ export default function EventBooking() {
                 id="participants"
                 type="number"
                 name="participants"
+
                 min={
                   0
                 }
+
+                max={
+                  MAX_PARTICIPANTS
+                }
+
+                step={
+                  1
+                }
+
+                inputMode="numeric"
+
                 value={
                   formData
                     .participants
                 }
+
                 onChange={
-                  handleChange
+                  handleParticipantsChange
                 }
-                placeholder="Number of participants"
+
+                placeholder="Maximum 150 participants"
+
                 className="
                   mt-2
                   h-11
                   w-full
+
                   rounded-xl
                   border
                   border-gray-200
+
                   bg-white
                   px-4
+
                   text-[10px]
                   text-blue-950
+
                   outline-none
+
                   transition
+
                   placeholder:text-gray-400
+
                   focus:border-yellow-400
                   focus:ring-2
                   focus:ring-yellow-100
                 "
               />
+
+              {/* COUNTER */}
+
+              <div
+                className="
+                  mt-1.5
+
+                  flex
+                  items-center
+                  justify-between
+                  gap-3
+                "
+              >
+                <p
+                  className="
+                    text-[8px]
+                    text-gray-500
+                  "
+                >
+                  Maximum capacity:
+                  {" "}
+                  {MAX_PARTICIPANTS}
+                  {" "}
+                  participants
+                </p>
+
+                <p
+                  className={`
+                    text-[8px]
+                    font-black
+
+                    ${
+                      Number(
+                        formData
+                          .participants ||
+                          0
+                      ) >=
+                      MAX_PARTICIPANTS
+                        ? "text-red-500"
+                        : "text-gray-400"
+                    }
+                  `}
+                >
+                  {
+                    formData
+                      .participants ||
+                    0
+                  }
+                  /
+                  {
+                    MAX_PARTICIPANTS
+                  }
+                </p>
+              </div>
             </div>
+
+            {/* SPECIAL REQUEST */}
 
             <div
               className="
@@ -1867,18 +2123,26 @@ export default function EventBooking() {
                   mt-2
                   w-full
                   resize-none
+
                   rounded-xl
                   border
                   border-gray-200
+
                   bg-white
+
                   px-4
                   py-3
+
                   text-[10px]
                   leading-5
                   text-blue-950
+
                   outline-none
+
                   transition
+
                   placeholder:text-gray-400
+
                   focus:border-yellow-400
                   focus:ring-2
                   focus:ring-yellow-100
@@ -1895,12 +2159,16 @@ export default function EventBooking() {
         <div
           className="
             mt-8
+
             flex
             flex-col
             gap-3
+
             border-t
             border-gray-100
+
             pt-5
+
             sm:flex-row
             sm:justify-end
           "
@@ -1921,16 +2189,23 @@ export default function EventBooking() {
               items-center
               justify-center
               gap-2
+
               rounded-xl
               border
               border-gray-200
+
               bg-white
+
               px-5
+
               text-[10px]
               font-black
               text-blue-950
+
               transition
+
               hover:bg-gray-50
+
               disabled:opacity-50
             "
           >
@@ -1961,14 +2236,21 @@ export default function EventBooking() {
               items-center
               justify-center
               gap-2
+
               rounded-xl
+
               bg-yellow-400
+
               px-6
+
               text-[10px]
               font-black
               text-blue-950
+
               transition
+
               hover:bg-yellow-500
+
               disabled:cursor-not-allowed
               disabled:bg-gray-200
               disabled:text-gray-500
@@ -2027,18 +2309,24 @@ function ScheduleAvailability({
   status,
   complete,
 }) {
-  if (!complete) {
+  if (
+    !complete
+  ) {
     return (
       <div
         className="
           mt-4
+
           flex
           items-start
           gap-3
+
           rounded-xl
           border
           border-blue-100
+
           bg-blue-50
+
           px-4
           py-3
         "
@@ -2072,11 +2360,13 @@ function ScheduleAvailability({
             "
           >
             Select the venue,
-            event date, start time,
-            and end time. NUnified
-            will automatically check
-            approved bookings from
-            all organizations.
+            event date, start
+            time, and end time.
+            NUnified will
+            automatically check
+            approved bookings
+            from all
+            organizations.
           </p>
         </div>
       </div>
@@ -2091,13 +2381,17 @@ function ScheduleAvailability({
       <div
         className="
           mt-4
+
           flex
           items-center
           gap-3
+
           rounded-xl
           border
           border-gray-200
+
           bg-gray-50
+
           px-4
           py-3
         "
@@ -2133,13 +2427,17 @@ function ScheduleAvailability({
       <div
         className="
           mt-4
+
           flex
           items-start
           gap-3
+
           rounded-xl
           border
           border-green-200
+
           bg-green-50
+
           px-4
           py-3
         "
@@ -2172,7 +2470,10 @@ function ScheduleAvailability({
               text-green-700
             "
           >
-            {status.message}
+            {
+              status
+                .message
+            }
           </p>
         </div>
       </div>
@@ -2201,13 +2502,17 @@ function ScheduleAvailability({
         }}
         className="
           mt-4
+
           flex
           items-start
           gap-3
+
           rounded-xl
           border
           border-red-200
+
           bg-red-50
+
           px-4
           py-3
         "
@@ -2240,7 +2545,10 @@ function ScheduleAvailability({
               text-red-700
             "
           >
-            {status.message}
+            {
+              status
+                .message
+            }
           </p>
 
           <p
@@ -2267,13 +2575,17 @@ function ScheduleAvailability({
       <div
         className="
           mt-4
+
           flex
           items-start
           gap-3
+
           rounded-xl
           border
           border-orange-200
+
           bg-orange-50
+
           px-4
           py-3
         "
@@ -2294,7 +2606,10 @@ function ScheduleAvailability({
             text-orange-700
           "
         >
-          {status.message}
+          {
+            status
+              .message
+          }
         </p>
       </div>
     );
@@ -2328,7 +2643,9 @@ function SectionHeading({
           shrink-0
           items-center
           justify-center
+
           rounded-xl
+
           bg-blue-950
           text-yellow-400
         "
@@ -2423,7 +2740,9 @@ function PdfUploadCard({
         rounded-2xl
         border
         border-gray-200
+
         bg-gray-50
+
         p-4
       "
     >
@@ -2442,7 +2761,9 @@ function PdfUploadCard({
             shrink-0
             items-center
             justify-center
+
             rounded-xl
+
             bg-red-100
             text-red-600
           "
@@ -2482,9 +2803,12 @@ function PdfUploadCard({
             <span
               className="
                 rounded-full
+
                 bg-red-100
+
                 px-2
                 py-1
+
                 text-[6px]
                 font-black
                 uppercase
@@ -2515,22 +2839,29 @@ function PdfUploadCard({
           }
           className="
             mt-4
+
             flex
             cursor-pointer
             items-center
             justify-center
             gap-2
+
             rounded-xl
             border
             border-dashed
             border-gray-300
+
             bg-white
+
             px-4
             py-4
+
             text-[9px]
             font-black
             text-blue-700
+
             transition
+
             hover:border-yellow-400
             hover:bg-yellow-50
           "
@@ -2562,14 +2893,18 @@ function PdfUploadCard({
         <div
           className="
             mt-4
+
             flex
             items-center
             justify-between
             gap-3
+
             rounded-xl
             border
             border-green-200
+
             bg-green-50
+
             p-3
           "
         >
@@ -2603,7 +2938,10 @@ function PdfUploadCard({
                   text-green-800
                 "
               >
-                {file.name}
+                {
+                  file
+                    .name
+                }
               </p>
 
               <p
@@ -2615,7 +2953,8 @@ function PdfUploadCard({
               >
                 {
                   formatFileSize(
-                    file.size
+                    file
+                      .size
                   )
                 }
               </p>
@@ -2635,9 +2974,13 @@ function PdfUploadCard({
               shrink-0
               items-center
               justify-center
+
               rounded-lg
+
               text-red-600
+
               transition
+
               hover:bg-red-100
             "
           >
@@ -2655,7 +2998,7 @@ function PdfUploadCard({
 }
 
 /* =====================================================
-   MESSAGE
+   MESSAGE BOX
 ===================================================== */
 
 function MessageBox({
@@ -2679,8 +3022,10 @@ function MessageBox({
         items-center
         justify-between
         gap-3
+
         rounded-xl
         border
+
         px-4
         py-3
 
@@ -2732,8 +3077,11 @@ function MessageBox({
           shrink-0
           items-center
           justify-center
+
           rounded-lg
+
           transition
+
           hover:bg-black/5
         "
       >

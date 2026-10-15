@@ -91,12 +91,6 @@ const __dirname =
 
 /* =====================================================
    CORS
-
-   Allows:
-   - Production React frontend
-   - Old NUnified frontend domain if needed
-   - Flutter Web running on localhost on ANY port
-   - Postman / server-to-server requests
 ===================================================== */
 
 const allowedProductionOrigins = [
@@ -147,12 +141,7 @@ app.use(
       origin,
       callback
     ) => {
-      /*
-        Allow requests without Origin:
-        - Postman
-        - backend requests
-        - mobile/native clients
-      */
+
 
       if (!origin) {
         return callback(
@@ -161,9 +150,6 @@ app.use(
         );
       }
 
-      /*
-        Production websites
-      */
 
       if (
         allowedProductionOrigins.includes(
@@ -176,15 +162,6 @@ app.use(
         );
       }
 
-      /*
-        Flutter Web / React local development
-
-        Examples:
-        http://localhost:5173
-        http://localhost:49821
-        http://127.0.0.1:3000
-        http://127.0.0.1:54567
-      */
 
       if (
         isLocalDevelopmentOrigin(

@@ -64,11 +64,6 @@ export default function OrganizationProfile() {
     EMPTY_ORGANIZATION
   );
 
-  /*
-    Profile image is stored separately
-    from organization information.
-  */
-
   const [
     profileImage,
     setProfileImage,
@@ -104,10 +99,6 @@ export default function OrganizationProfile() {
     setShowEdit,
   ] = useState(false);
 
-  /* =====================================================
-     CUSTOM REMOVE PICTURE CONFIRMATION
-  ===================================================== */
-
   const [
     showRemovePictureConfirm,
     setShowRemovePictureConfirm,
@@ -116,6 +107,15 @@ export default function OrganizationProfile() {
   const [
     editForm,
     setEditForm,
+  ] = useState({
+    adviser: "",
+    contactNumber: "",
+    description: "",
+  });
+
+  const [
+    editErrors,
+    setEditErrors,
   ] = useState({
     adviser: "",
     contactNumber: "",
@@ -132,10 +132,6 @@ export default function OrganizationProfile() {
       setError("");
 
       try {
-        /* =============================================
-           ORGANIZATION
-        ============================================= */
-
         const orgResponse =
           await api.get(
             "/organizations/me"
@@ -151,10 +147,6 @@ export default function OrganizationProfile() {
           ...EMPTY_ORGANIZATION,
           ...org,
         });
-
-        /* =============================================
-           SAVED PROFILE PICTURE
-        ============================================= */
 
         try {
           const pictureResponse =
@@ -207,7 +199,7 @@ export default function OrganizationProfile() {
           err.response
             ?.data
             ?.message ||
-            "Unable to load organization profile."
+          "Unable to load organization profile."
         );
       } finally {
         setLoading(
@@ -225,11 +217,6 @@ export default function OrganizationProfile() {
 
   /* ===================================================
      PREPARE IMAGE
-
-     Resize to 500x500 maximum.
-     JPEG 75%.
-
-     This keeps the MongoDB image small.
   =================================================== */
 
   const prepareImage =
@@ -419,17 +406,9 @@ export default function OrganizationProfile() {
             file
           );
 
-        /*
-          Show immediately.
-        */
-
         setProfileImage(
           preparedImage
         );
-
-        /*
-          Save permanently to MongoDB.
-        */
 
         const response =
           await api.put(
@@ -450,23 +429,23 @@ export default function OrganizationProfile() {
           saved
         );
 
-        console.log(
-          "PICTURE SAVED:",
-          {
-            exists:
-              Boolean(
-                saved
-              ),
+        window.dispatchEvent(
+          new CustomEvent(
+            "organizationProfileImageUpdated",
 
-            length:
-              saved.length,
-          }
+            {
+              detail: {
+                profileImage:
+                  saved,
+              },
+            }
+          )
         );
 
         setSuccess(
           response.data
             ?.message ||
-            "Profile picture saved successfully."
+          "Profile picture saved successfully."
         );
       } catch (
         err
@@ -480,13 +459,8 @@ export default function OrganizationProfile() {
           err.response
             ?.data
             ?.message ||
-            "Unable to save profile picture."
+          "Unable to save profile picture."
         );
-
-        /*
-          Reload database version if
-          save failed.
-        */
 
         await loadProfile();
       } finally {
@@ -498,8 +472,6 @@ export default function OrganizationProfile() {
 
   /* ===================================================
      OPEN REMOVE PICTURE CONFIRMATION
-
-     This replaces window.confirm().
   =================================================== */
 
   const openRemovePictureConfirm =
@@ -543,6 +515,19 @@ export default function OrganizationProfile() {
           ""
         );
 
+        window.dispatchEvent(
+          new CustomEvent(
+            "organizationProfileImageUpdated",
+
+            {
+              detail: {
+                profileImage:
+                  "",
+              },
+            }
+          )
+        );
+
         setShowRemovePictureConfirm(
           false
         );
@@ -550,7 +535,7 @@ export default function OrganizationProfile() {
         setSuccess(
           response.data
             ?.message ||
-            "Profile picture removed successfully."
+          "Profile picture removed successfully."
         );
       } catch (
         err
@@ -564,7 +549,7 @@ export default function OrganizationProfile() {
           err.response
             ?.data
             ?.message ||
-            "Unable to remove profile picture."
+          "Unable to remove profile picture."
         );
       } finally {
         setUploading(
@@ -574,7 +559,7 @@ export default function OrganizationProfile() {
     };
 
   /* ===================================================
-     EDIT PROFILE
+     OPEN EDIT PROFILE
   =================================================== */
 
   const openEdit =
@@ -596,6 +581,17 @@ export default function OrganizationProfile() {
           "",
       });
 
+      setEditErrors({
+        adviser:
+          "",
+
+        contactNumber:
+          "",
+
+        description:
+          "",
+      });
+
       setError(
         ""
       );
@@ -609,6 +605,138 @@ export default function OrganizationProfile() {
       );
     };
 
+  /* ===================================================
+     VALIDATE ADVISER
+  =================================================== */
+
+  const validateAdviser =
+    (
+      value
+    ) => {
+      const adviser =
+        String(
+          value ||
+          ""
+        ).trim();
+
+      if (
+        !adviser
+      ) {
+        return "Adviser is required.";
+      }
+
+      if (
+        adviser.length <
+        2
+      ) {
+        return "Adviser must contain at least 2 characters.";
+      }
+
+      if (
+        adviser.length >
+        60
+      ) {
+        return "Adviser must not exceed 60 characters.";
+      }
+
+      if (
+        !/^[A-Za-zÀ-ÖØ-öø-ÿÑñ.' -]+$/.test(
+          adviser
+        )
+      ) {
+        return "Adviser must contain letters only. Periods, apostrophes, spaces, and hyphens are allowed.";
+      }
+
+      return "";
+    };
+
+  /* ===================================================
+     VALIDATE CONTACT NUMBER
+  =================================================== */
+
+  const validateContactNumber =
+    (
+      value
+    ) => {
+      const contact =
+        String(
+          value ||
+          ""
+        ).trim();
+
+      if (
+        !contact
+      ) {
+        return "Contact Number is required.";
+      }
+
+      if (
+        !/^\d+$/.test(
+          contact
+        )
+      ) {
+        return "Contact Number must contain numbers only.";
+      }
+
+      if (
+        contact.length !==
+        11
+      ) {
+        return "Contact Number must contain exactly 11 digits.";
+      }
+
+      if (
+        !contact.startsWith(
+          "09"
+        )
+      ) {
+        return "Contact Number must start with 09.";
+      }
+
+      return "";
+    };
+
+  /* ===================================================
+     VALIDATE DESCRIPTION
+  =================================================== */
+
+  const validateDescription =
+    (
+      value
+    ) => {
+      const description =
+        String(
+          value ||
+          ""
+        ).trim();
+
+      if (
+        !description
+      ) {
+        return "Description is required.";
+      }
+
+      if (
+        description.length <
+        10
+      ) {
+        return "Description must contain at least 10 characters.";
+      }
+
+      if (
+        description.length >
+        300
+      ) {
+        return "Description must not exceed 300 characters.";
+      }
+
+      return "";
+    };
+
+  /* ===================================================
+     EDIT FIELD CHANGE
+  =================================================== */
+
   const handleEditChange =
     (
       event
@@ -619,20 +747,176 @@ export default function OrganizationProfile() {
       } =
         event.target;
 
-      setEditForm(
-        (
-          previous
-        ) => ({
-          ...previous,
+      /* ===============================================
+         CONTACT NUMBER
+         DIGITS ONLY
+         MAX 11
+      =============================================== */
 
-          [name]:
-            value,
-        })
+      if (
+        name ===
+        "contactNumber"
+      ) {
+        const numbersOnly =
+          value
+            .replace(
+              /\D/g,
+              ""
+            )
+            .slice(
+              0,
+              11
+            );
+
+        setEditForm(
+          (
+            previous
+          ) => ({
+            ...previous,
+
+            contactNumber:
+              numbersOnly,
+          })
+        );
+
+        setEditErrors(
+          (
+            previous
+          ) => ({
+            ...previous,
+
+            contactNumber:
+              validateContactNumber(
+                numbersOnly
+              ),
+          })
+        );
+
+        return;
+      }
+
+      /* ===============================================
+         ADVISER
+         MAX 60
+      =============================================== */
+
+      if (
+        name ===
+        "adviser"
+      ) {
+        const limitedValue =
+          value.slice(
+            0,
+            60
+          );
+
+        setEditForm(
+          (
+            previous
+          ) => ({
+            ...previous,
+
+            adviser:
+              limitedValue,
+          })
+        );
+
+        setEditErrors(
+          (
+            previous
+          ) => ({
+            ...previous,
+
+            adviser:
+              validateAdviser(
+                limitedValue
+              ),
+          })
+        );
+
+        return;
+      }
+
+      /* ===============================================
+         DESCRIPTION
+         MAX 300
+      =============================================== */
+
+      if (
+        name ===
+        "description"
+      ) {
+        const limitedValue =
+          value.slice(
+            0,
+            300
+          );
+
+        setEditForm(
+          (
+            previous
+          ) => ({
+            ...previous,
+
+            description:
+              limitedValue,
+          })
+        );
+
+        setEditErrors(
+          (
+            previous
+          ) => ({
+            ...previous,
+
+            description:
+              validateDescription(
+                limitedValue
+              ),
+          })
+        );
+      }
+    };
+
+  /* ===================================================
+     VALIDATE WHOLE EDIT FORM
+  =================================================== */
+
+  const validateEditForm =
+    () => {
+      const errors = {
+        adviser:
+          validateAdviser(
+            editForm
+              .adviser
+          ),
+
+        contactNumber:
+          validateContactNumber(
+            editForm
+              .contactNumber
+          ),
+
+        description:
+          validateDescription(
+            editForm
+              .description
+          ),
+      };
+
+      setEditErrors(
+        errors
+      );
+
+      return (
+        !errors.adviser &&
+        !errors.contactNumber &&
+        !errors.description
       );
     };
 
   /* ===================================================
-     SAVE TEXT PROFILE
+     SAVE PROFILE INFORMATION
   =================================================== */
 
   const saveProfile =
@@ -640,6 +924,15 @@ export default function OrganizationProfile() {
       event
     ) => {
       event.preventDefault();
+
+      const valid =
+        validateEditForm();
+
+      if (
+        !valid
+      ) {
+        return;
+      }
 
       setSaving(
         true
@@ -690,14 +983,31 @@ export default function OrganizationProfile() {
           })
         );
 
+        window.dispatchEvent(
+          new CustomEvent(
+            "organizationProfileUpdated"
+          )
+        );
+
         setShowEdit(
           false
         );
 
+        setEditErrors({
+          adviser:
+            "",
+
+          contactNumber:
+            "",
+
+          description:
+            "",
+        });
+
         setSuccess(
           response.data
             ?.message ||
-            "Organization profile updated successfully."
+          "Organization profile updated successfully."
         );
       } catch (
         err
@@ -711,13 +1021,41 @@ export default function OrganizationProfile() {
           err.response
             ?.data
             ?.message ||
-            "Unable to update organization profile."
+          "Unable to update organization profile."
         );
       } finally {
         setSaving(
           false
         );
       }
+    };
+
+  /* ===================================================
+     CLOSE EDIT MODAL
+  =================================================== */
+
+  const closeEdit =
+    () => {
+      if (
+        saving
+      ) {
+        return;
+      }
+
+      setShowEdit(
+        false
+      );
+
+      setEditErrors({
+        adviser:
+          "",
+
+        contactNumber:
+          "",
+
+        description:
+          "",
+      });
     };
 
   /* ===================================================
@@ -1482,9 +1820,6 @@ export default function OrganizationProfile() {
 
       {/* =================================================
           REMOVE PROFILE PICTURE CONFIRMATION
-
-          CUSTOM MODAL
-          NO browser "vercel.app says" popup.
       ================================================= */}
 
       {showRemovePictureConfirm && (
@@ -1557,9 +1892,7 @@ export default function OrganizationProfile() {
               shadow-2xl
             "
           >
-            {/* =================================================
-                MODAL HEADER
-            ================================================= */}
+            {/* HEADER */}
 
             <div
               className="
@@ -1612,6 +1945,7 @@ export default function OrganizationProfile() {
                       font-black
                       uppercase
                       tracking-[0.15em]
+
                       text-yellow-400
                     "
                   >
@@ -1632,9 +1966,7 @@ export default function OrganizationProfile() {
               </div>
             </div>
 
-            {/* =================================================
-                MODAL CONTENT
-            ================================================= */}
+            {/* CONTENT */}
 
             <div
               className="
@@ -1687,21 +2019,19 @@ export default function OrganizationProfile() {
 
                       text-[10px]
                       leading-5
+
                       text-red-700
                     "
                   >
-                    Your current
-                    organization profile
-                    picture will be removed.
-                    You can upload another
-                    picture anytime.
+                    Your current organization
+                    profile picture will be
+                    removed. You can upload
+                    another picture anytime.
                   </p>
                 </div>
               </div>
 
-              {/* =================================================
-                  MODAL BUTTONS
-              ================================================= */}
+              {/* BUTTONS */}
 
               <div
                 className="
@@ -1712,8 +2042,6 @@ export default function OrganizationProfile() {
                   gap-3
                 "
               >
-                {/* CANCEL */}
-
                 <button
                   type="button"
                   disabled={
@@ -1761,8 +2089,6 @@ export default function OrganizationProfile() {
 
                   Cancel
                 </button>
-
-                {/* REMOVE */}
 
                 <button
                   type="button"
@@ -1849,11 +2175,8 @@ export default function OrganizationProfile() {
 
             backdrop-blur-sm
           "
-          onClick={() =>
-            !saving &&
-            setShowEdit(
-              false
-            )
+          onClick={
+            closeEdit
           }
         >
           <motion.form
@@ -1879,6 +2202,7 @@ export default function OrganizationProfile() {
             ) =>
               event.stopPropagation()
             }
+            noValidate
             className="
               w-full
               max-w-lg
@@ -1892,6 +2216,10 @@ export default function OrganizationProfile() {
               shadow-2xl
             "
           >
+            {/* =================================================
+                HEADER
+            ================================================= */}
+
             <div
               className="
                 flex
@@ -1906,6 +2234,7 @@ export default function OrganizationProfile() {
                     font-black
                     uppercase
                     tracking-[0.14em]
+
                     text-yellow-600
                   "
                 >
@@ -1923,14 +2252,27 @@ export default function OrganizationProfile() {
                 >
                   Edit Profile
                 </h2>
+
+                <p
+                  className="
+                    mt-1
+
+                    text-[9px]
+                    text-gray-500
+                  "
+                >
+                  Update your organization
+                  profile information.
+                </p>
               </div>
 
               <button
                 type="button"
-                onClick={() =>
-                  setShowEdit(
-                    false
-                  )
+                disabled={
+                  saving
+                }
+                onClick={
+                  closeEdit
                 }
                 className="
                   flex
@@ -1942,6 +2284,12 @@ export default function OrganizationProfile() {
                   rounded-full
 
                   bg-gray-100
+
+                  transition
+
+                  hover:bg-gray-200
+
+                  disabled:opacity-50
                 "
               >
                 <MaterialIcon
@@ -1959,12 +2307,33 @@ export default function OrganizationProfile() {
                 mt-5
               "
             >
-              <FieldLabel>
+              <label
+                htmlFor="adviser"
+                className="
+                  text-[10px]
+                  font-black
+                  text-blue-950
+                "
+              >
                 Adviser
-              </FieldLabel>
+
+                <span
+                  className="
+                    ml-1
+                    text-red-500
+                  "
+                >
+                  *
+                </span>
+              </label>
 
               <input
+                id="adviser"
                 name="adviser"
+                type="text"
+                maxLength={
+                  60
+                }
                 value={
                   editForm
                     .adviser
@@ -1972,14 +2341,119 @@ export default function OrganizationProfile() {
                 onChange={
                   handleEditChange
                 }
-                className={
-                  inputClass
-                }
+                placeholder="Enter adviser name"
+                className={`
+                  mt-1.5
+                  h-10
+                  w-full
+
+                  rounded-xl
+
+                  border
+
+                  px-3
+
+                  text-[11px]
+                  text-blue-950
+
+                  outline-none
+
+                  transition
+
+                  ${
+                    editErrors
+                      .adviser
+                      ? `
+                        border-red-400
+                        bg-red-50
+
+                        focus:border-red-500
+                        focus:ring-red-200
+                      `
+                      : `
+                        border-gray-200
+                        bg-white
+
+                        focus:border-yellow-400
+                        focus:ring-yellow-400/20
+                      `
+                  }
+
+                  focus:ring-2
+                `}
               />
+
+              <div
+                className="
+                  mt-1
+
+                  flex
+                  items-start
+                  justify-between
+                  gap-3
+                "
+              >
+                <div>
+                  {editErrors
+                    .adviser ? (
+                    <p
+                      className="
+                        flex
+                        items-center
+                        gap-1
+
+                        text-[8px]
+                        font-bold
+                        text-red-600
+                      "
+                    >
+                      <MaterialIcon
+                        name="error"
+                        className="
+                          text-[12px]
+                        "
+                      />
+
+                      {
+                        editErrors
+                          .adviser
+                      }
+                    </p>
+                  ) : (
+                    <p
+                      className="
+                        text-[8px]
+                        text-gray-400
+                      "
+                    >
+                      Letters, spaces,
+                      period, apostrophe,
+                      and hyphen only.
+                    </p>
+                  )}
+                </div>
+
+                <span
+                  className="
+                    shrink-0
+
+                    text-[8px]
+                    font-bold
+                    text-gray-400
+                  "
+                >
+                  {
+                    editForm
+                      .adviser
+                      .length
+                  }
+                  /60
+                </span>
+              </div>
             </div>
 
             {/* =================================================
-                CONTACT
+                CONTACT NUMBER
             ================================================= */}
 
             <div
@@ -1987,12 +2461,35 @@ export default function OrganizationProfile() {
                 mt-4
               "
             >
-              <FieldLabel>
+              <label
+                htmlFor="contactNumber"
+                className="
+                  text-[10px]
+                  font-black
+                  text-blue-950
+                "
+              >
                 Contact Number
-              </FieldLabel>
+
+                <span
+                  className="
+                    ml-1
+                    text-red-500
+                  "
+                >
+                  *
+                </span>
+              </label>
 
               <input
+                id="contactNumber"
                 name="contactNumber"
+                type="text"
+                inputMode="numeric"
+                autoComplete="tel"
+                maxLength={
+                  11
+                }
                 value={
                   editForm
                     .contactNumber
@@ -2000,10 +2497,124 @@ export default function OrganizationProfile() {
                 onChange={
                   handleEditChange
                 }
-                className={
-                  inputClass
-                }
+                placeholder="09XXXXXXXXX"
+                className={`
+                  mt-1.5
+                  h-10
+                  w-full
+
+                  rounded-xl
+
+                  border
+
+                  px-3
+
+                  text-[11px]
+                  text-blue-950
+
+                  outline-none
+
+                  transition
+
+                  ${
+                    editErrors
+                      .contactNumber
+                      ? `
+                        border-red-400
+                        bg-red-50
+
+                        focus:border-red-500
+                        focus:ring-red-200
+                      `
+                      : `
+                        border-gray-200
+                        bg-white
+
+                        focus:border-yellow-400
+                        focus:ring-yellow-400/20
+                      `
+                  }
+
+                  focus:ring-2
+                `}
               />
+
+              <div
+                className="
+                  mt-1
+
+                  flex
+                  items-start
+                  justify-between
+                  gap-3
+                "
+              >
+                <div>
+                  {editErrors
+                    .contactNumber ? (
+                    <p
+                      className="
+                        flex
+                        items-center
+                        gap-1
+
+                        text-[8px]
+                        font-bold
+                        text-red-600
+                      "
+                    >
+                      <MaterialIcon
+                        name="error"
+                        className="
+                          text-[12px]
+                        "
+                      />
+
+                      {
+                        editErrors
+                          .contactNumber
+                      }
+                    </p>
+                  ) : (
+                    <p
+                      className="
+                        text-[8px]
+                        text-gray-400
+                      "
+                    >
+                      Philippine mobile
+                      number, exactly 11
+                      digits and beginning
+                      with 09.
+                    </p>
+                  )}
+                </div>
+
+                <span
+                  className={`
+                    shrink-0
+
+                    text-[8px]
+                    font-black
+
+                    ${
+                      editForm
+                        .contactNumber
+                        .length ===
+                      11
+                        ? "text-green-600"
+                        : "text-gray-400"
+                    }
+                  `}
+                >
+                  {
+                    editForm
+                      .contactNumber
+                      .length
+                  }
+                  /11
+                </span>
+              </div>
             </div>
 
             {/* =================================================
@@ -2015,11 +2626,28 @@ export default function OrganizationProfile() {
                 mt-4
               "
             >
-              <FieldLabel>
+              <label
+                htmlFor="description"
+                className="
+                  text-[10px]
+                  font-black
+                  text-blue-950
+                "
+              >
                 Description
-              </FieldLabel>
+
+                <span
+                  className="
+                    ml-1
+                    text-red-500
+                  "
+                >
+                  *
+                </span>
+              </label>
 
               <textarea
+                id="description"
                 name="description"
                 value={
                   editForm
@@ -2028,15 +2656,132 @@ export default function OrganizationProfile() {
                 onChange={
                   handleEditChange
                 }
-                rows="5"
+                rows={
+                  5
+                }
+                maxLength={
+                  300
+                }
+                placeholder="Describe your organization"
                 className={`
-                  ${inputClass}
+                  mt-1.5
+                  w-full
 
-                  h-auto
                   resize-none
+
+                  rounded-xl
+
+                  border
+
+                  px-3
                   py-3
+
+                  text-[11px]
+                  leading-5
+                  text-blue-950
+
+                  outline-none
+
+                  transition
+
+                  ${
+                    editErrors
+                      .description
+                      ? `
+                        border-red-400
+                        bg-red-50
+
+                        focus:border-red-500
+                        focus:ring-red-200
+                      `
+                      : `
+                        border-gray-200
+                        bg-white
+
+                        focus:border-yellow-400
+                        focus:ring-yellow-400/20
+                      `
+                  }
+
+                  focus:ring-2
                 `}
               />
+
+              <div
+                className="
+                  mt-1
+
+                  flex
+                  items-start
+                  justify-between
+                  gap-3
+                "
+              >
+                <div>
+                  {editErrors
+                    .description ? (
+                    <p
+                      className="
+                        flex
+                        items-center
+                        gap-1
+
+                        text-[8px]
+                        font-bold
+                        text-red-600
+                      "
+                    >
+                      <MaterialIcon
+                        name="error"
+                        className="
+                          text-[12px]
+                        "
+                      />
+
+                      {
+                        editErrors
+                          .description
+                      }
+                    </p>
+                  ) : (
+                    <p
+                      className="
+                        text-[8px]
+                        text-gray-400
+                      "
+                    >
+                      Minimum 10,
+                      maximum 300
+                      characters.
+                    </p>
+                  )}
+                </div>
+
+                <span
+                  className={`
+                    shrink-0
+
+                    text-[8px]
+                    font-black
+
+                    ${
+                      editForm
+                        .description
+                        .length >=
+                      300
+                        ? "text-red-500"
+                        : "text-gray-400"
+                    }
+                  `}
+                >
+                  {
+                    editForm
+                      .description
+                      .length
+                  }
+                  /300
+                </span>
+              </div>
             </div>
 
             {/* =================================================
@@ -2054,10 +2799,11 @@ export default function OrganizationProfile() {
             >
               <button
                 type="button"
-                onClick={() =>
-                  setShowEdit(
-                    false
-                  )
+                disabled={
+                  saving
+                }
+                onClick={
+                  closeEdit
                 }
                 className="
                   rounded-xl
@@ -2068,6 +2814,13 @@ export default function OrganizationProfile() {
 
                   text-[10px]
                   font-black
+                  text-blue-950
+
+                  transition
+
+                  hover:bg-gray-200
+
+                  disabled:opacity-50
                 "
               >
                 Cancel
@@ -2079,6 +2832,11 @@ export default function OrganizationProfile() {
                   saving
                 }
                 className="
+                  flex
+                  items-center
+                  justify-center
+                  gap-2
+
                   rounded-xl
 
                   bg-yellow-400
@@ -2089,64 +2847,44 @@ export default function OrganizationProfile() {
                   font-black
                   text-blue-950
 
+                  transition
+
+                  hover:bg-yellow-500
+
+                  disabled:cursor-not-allowed
                   disabled:opacity-50
                 "
               >
-                {saving
-                  ? "Saving..."
-                  : "Save Profile"}
+                {saving ? (
+                  <>
+                    <MaterialIcon
+                      name="progress_activity"
+                      className="
+                        animate-spin
+                        text-[16px]
+                      "
+                    />
+
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <MaterialIcon
+                      name="save"
+                      className="
+                        text-[16px]
+                      "
+                    />
+
+                    Save Profile
+                  </>
+                )}
               </button>
             </div>
           </motion.form>
         </div>
       )}
     </>
-  );
-}
-
-/* =====================================================
-   INPUT
-===================================================== */
-
-const inputClass = `
-  mt-1.5
-  h-10
-  w-full
-
-  rounded-xl
-
-  border
-  border-gray-200
-
-  px-3
-
-  text-[11px]
-  text-blue-950
-
-  outline-none
-
-  focus:border-yellow-400
-  focus:ring-2
-  focus:ring-yellow-400/20
-`;
-
-/* =====================================================
-   LABEL
-===================================================== */
-
-function FieldLabel({
-  children,
-}) {
-  return (
-    <label
-      className="
-        text-[10px]
-        font-black
-        text-blue-950
-      "
-    >
-      {children}
-    </label>
   );
 }
 

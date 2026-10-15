@@ -1,19 +1,66 @@
 import mongoose from "mongoose";
 
 /* =====================================================
-   ARCHIVED ANNOUNCEMENT SCHEMA
+   ARCHIVED IMAGE
+===================================================== */
+
+const archivedImageFileSchema =
+  new mongoose.Schema(
+    {
+      originalName: {
+        type: String,
+        default: "",
+      },
+
+      fileName: {
+        type: String,
+        default: "",
+      },
+
+      mimeType: {
+        type: String,
+        default: "",
+      },
+
+      size: {
+        type: Number,
+        default: 0,
+      },
+
+      /*
+        Actual image bytes.
+
+        Stored in MongoDB so archived
+        images do not depend on Vercel
+        filesystem storage.
+      */
+      data: {
+        type: Buffer,
+        default: null,
+        select: false,
+      },
+    },
+    {
+      _id: false,
+    }
+  );
+
+/* =====================================================
+   ARCHIVED ANNOUNCEMENT
 ===================================================== */
 
 const archivedAnnouncementSchema =
   new mongoose.Schema(
     {
-      /* =================================================
-         ORIGINAL ANNOUNCEMENT ID
-      ================================================= */
+      /*
+        ID of the original Announcement.
 
+        Used when restoring.
+      */
       originalAnnouncementId: {
         type:
-          mongoose.Schema.Types.ObjectId,
+          mongoose.Schema.Types
+            .ObjectId,
 
         required: true,
 
@@ -22,65 +69,127 @@ const archivedAnnouncementSchema =
         index: true,
       },
 
-      /* =================================================
-         COMPLETE ORIGINAL POST
-
-         We store a complete copy here so:
-         - title stays
-         - content stays
-         - image stays
-         - status stays
-         - event date stays
-         - admin remarks stay
-         - organization link stays
-      ================================================= */
-
-      snapshot: {
+      organization: {
         type:
-          mongoose.Schema.Types.Mixed,
+          mongoose.Schema.Types
+            .ObjectId,
+
+        ref: "Organization",
 
         required: true,
       },
 
-      /* =================================================
-         ORGANIZATION DISPLAY COPY
-      ================================================= */
-
-      organizationSnapshot: {
-        organizationName: {
-          type: String,
-          default:
-            "Organization",
-        },
-
-        acronym: {
-          type: String,
-          default: "",
-        },
-
-        color: {
-          type: String,
-          default:
-            "#FACC15",
-        },
-      },
-
-      /* =================================================
-         WHO ARCHIVED IT
-      ================================================= */
-
-      archivedBy: {
+      createdBy: {
         type:
-          mongoose.Schema.Types.ObjectId,
+          mongoose.Schema.Types
+            .ObjectId,
 
         ref: "User",
 
         default: null,
       },
 
-      /* =================================================
-         ARCHIVED DATE
-      ================================================= */
+      type: {
+        type: String,
+
+        enum: [
+          "Announcement",
+          "News",
+        ],
+
+        required: true,
+      },
+
+      title: {
+        type: String,
+
+        required: true,
+
+        trim: true,
+      },
+
+      content: {
+        type: String,
+
+        required: true,
+
+        trim: true,
+      },
+
+      eventDate: {
+        type: String,
+
+        default: "",
+      },
+
+      imageFile: {
+        type:
+          archivedImageFileSchema,
+
+        default: null,
+      },
+
+      /*
+        Preserve the old status.
+
+        Usually approved or rejected.
+      */
+      status: {
+        type: String,
+
+        enum: [
+          "pending",
+          "approved",
+          "rejected",
+        ],
+
+        default:
+          "approved",
+      },
+
+      adminRemarks: {
+        type: String,
+
+        default: "",
+      },
+
+      reviewedBy: {
+        type:
+          mongoose.Schema.Types
+            .ObjectId,
+
+        ref: "User",
+
+        default: null,
+      },
+
+      reviewedAt: {
+        type: Date,
+
+        default: null,
+      },
+
+      publishedAt: {
+        type: Date,
+
+        default: null,
+      },
+
+      /*
+        Preserve original timestamps.
+      */
+
+      originalCreatedAt: {
+        type: Date,
+
+        default: null,
+      },
+
+      originalUpdatedAt: {
+        type: Date,
+
+        default: null,
+      },
 
       archivedAt: {
         type: Date,
@@ -90,7 +199,8 @@ const archivedAnnouncementSchema =
       },
     },
     {
-      timestamps: true,
+      timestamps:
+        true,
     }
   );
 
@@ -98,12 +208,7 @@ const archivedAnnouncementSchema =
    MODEL
 ===================================================== */
 
-const ArchivedAnnouncement =
-  mongoose.models
-    .ArchivedAnnouncement ||
-  mongoose.model(
-    "ArchivedAnnouncement",
-    archivedAnnouncementSchema
-  );
-
-export default ArchivedAnnouncement;
+export default mongoose.model(
+  "ArchivedAnnouncement",
+  archivedAnnouncementSchema
+);

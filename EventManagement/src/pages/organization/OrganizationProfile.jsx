@@ -1,23 +1,27 @@
-import { useEffect, useRef, useState } from "react";
+import {
+  useEffect,
+  useState,
+} from "react";
 
-import { Link, useNavigate } from "react-router-dom";
+import {
+  Link,
+  useNavigate,
+} from "react-router-dom";
 
-import { motion } from "framer-motion";
+import {
+  motion,
+} from "framer-motion";
 
 import api from "../../api/axiosClient.js";
-
-/* =====================================================
-   CONSTANTS
-===================================================== */
-
-const CROP_SIZE = 280;
-const OUTPUT_SIZE = 500;
 
 /* =====================================================
    MATERIAL ICON
 ===================================================== */
 
-function MaterialIcon({ name, className = "" }) {
+function MaterialIcon({
+  name,
+  className = "",
+}) {
   return (
     <span
       className={`
@@ -46,735 +50,726 @@ const EMPTY_ORGANIZATION = {
 };
 
 /* =====================================================
-   ORGANIZATION PROFILE
+   PAGE
 ===================================================== */
 
 export default function OrganizationProfile() {
-  const navigate = useNavigate();
+  const navigate =
+    useNavigate();
 
-  /* ===================================================
-     ORGANIZATION
-  =================================================== */
+  const [
+    organization,
+    setOrganization,
+  ] = useState(
+    EMPTY_ORGANIZATION
+  );
 
-  const [organization, setOrganization] = useState(EMPTY_ORGANIZATION);
+  /*
+    Profile image is stored separately
+    from organization information.
+  */
 
-  /* ===================================================
-     SAVED PROFILE IMAGE
-  =================================================== */
+  const [
+    profileImage,
+    setProfileImage,
+  ] = useState("");
 
-  const [profileImage, setProfileImage] = useState("");
+  const [
+    loading,
+    setLoading,
+  ] = useState(true);
 
-  /* ===================================================
-     PAGE STATES
-  =================================================== */
+  const [
+    uploading,
+    setUploading,
+  ] = useState(false);
 
-  const [loading, setLoading] = useState(true);
+  const [
+    saving,
+    setSaving,
+  ] = useState(false);
 
-  const [uploading, setUploading] = useState(false);
+  const [
+    error,
+    setError,
+  ] = useState("");
 
-  const [saving, setSaving] = useState(false);
+  const [
+    success,
+    setSuccess,
+  ] = useState("");
 
-  const [error, setError] = useState("");
+  const [
+    showEdit,
+    setShowEdit,
+  ] = useState(false);
 
-  const [success, setSuccess] = useState("");
+  /* =====================================================
+     CUSTOM REMOVE PICTURE CONFIRMATION
+  ===================================================== */
 
-  /* ===================================================
-     EDIT PROFILE
-  =================================================== */
+  const [
+    showRemovePictureConfirm,
+    setShowRemovePictureConfirm,
+  ] = useState(false);
 
-  const [showEdit, setShowEdit] = useState(false);
-
-  const [editForm, setEditForm] = useState({
+  const [
+    editForm,
+    setEditForm,
+  ] = useState({
     adviser: "",
     contactNumber: "",
     description: "",
   });
 
   /* ===================================================
-     CROP / REVIEW
+     LOAD ORGANIZATION + SAVED PICTURE
   =================================================== */
 
-  const [showCrop, setShowCrop] = useState(false);
+  const loadProfile =
+    async () => {
+      setLoading(true);
+      setError("");
 
-  const [cropSource, setCropSource] = useState("");
+      try {
+        /* =============================================
+           ORGANIZATION
+        ============================================= */
 
-  const [zoom, setZoom] = useState(1);
+        const orgResponse =
+          await api.get(
+            "/organizations/me"
+          );
 
-  const [cropX, setCropX] = useState(0);
+        const org =
+          orgResponse.data
+            ?.organization ||
+          orgResponse.data ||
+          {};
 
-  const [cropY, setCropY] = useState(0);
+        setOrganization({
+          ...EMPTY_ORGANIZATION,
+          ...org,
+        });
 
-  const [naturalSize, setNaturalSize] = useState({
-    width: 0,
-    height: 0,
-  });
+        /* =============================================
+           SAVED PROFILE PICTURE
+        ============================================= */
 
-  const cropImageRef = useRef(null);
+        try {
+          const pictureResponse =
+            await api.get(
+              "/organization-profile/me/profile-picture"
+            );
 
-  const dragRef = useRef({
-    active: false,
-    startClientX: 0,
-    startClientY: 0,
-    startCropX: 0,
-    startCropY: 0,
-  });
+          const savedPicture =
+            pictureResponse.data
+              ?.profileImage ||
+            "";
+
+          console.log(
+            "SAVED PROFILE PICTURE:",
+            {
+              exists:
+                Boolean(
+                  savedPicture
+                ),
+
+              length:
+                savedPicture.length,
+            }
+          );
+
+          setProfileImage(
+            savedPicture
+          );
+        } catch (
+          pictureError
+        ) {
+          console.error(
+            "LOAD PROFILE PICTURE ERROR:",
+            pictureError
+          );
+
+          setProfileImage(
+            ""
+          );
+        }
+      } catch (
+        err
+      ) {
+        console.error(
+          "LOAD ORGANIZATION ERROR:",
+          err
+        );
+
+        setError(
+          err.response
+            ?.data
+            ?.message ||
+            "Unable to load organization profile."
+        );
+      } finally {
+        setLoading(
+          false
+        );
+      }
+    };
+
+  useEffect(
+    () => {
+      loadProfile();
+    },
+    []
+  );
+
+  /* ===================================================
+     PREPARE IMAGE
+
+     Resize to 500x500 maximum.
+     JPEG 75%.
+
+     This keeps the MongoDB image small.
+  =================================================== */
+
+  const prepareImage =
+    (
+      file
+    ) =>
+      new Promise(
+        (
+          resolve,
+          reject
+        ) => {
+          const reader =
+            new FileReader();
+
+          reader.onerror =
+            () =>
+              reject(
+                new Error(
+                  "Unable to read image."
+                )
+              );
+
+          reader.onload =
+            () => {
+              const image =
+                new Image();
+
+              image.onerror =
+                () =>
+                  reject(
+                    new Error(
+                      "Invalid image."
+                    )
+                  );
+
+              image.onload =
+                () => {
+                  const maxSize =
+                    500;
+
+                  let width =
+                    image.width;
+
+                  let height =
+                    image.height;
+
+                  if (
+                    width >
+                      maxSize ||
+                    height >
+                      maxSize
+                  ) {
+                    const ratio =
+                      Math.min(
+                        maxSize /
+                          width,
+
+                        maxSize /
+                          height
+                      );
+
+                    width =
+                      Math.round(
+                        width *
+                          ratio
+                      );
+
+                    height =
+                      Math.round(
+                        height *
+                          ratio
+                      );
+                  }
+
+                  const canvas =
+                    document.createElement(
+                      "canvas"
+                    );
+
+                  canvas.width =
+                    width;
+
+                  canvas.height =
+                    height;
+
+                  const context =
+                    canvas.getContext(
+                      "2d"
+                    );
+
+                  context.drawImage(
+                    image,
+                    0,
+                    0,
+                    width,
+                    height
+                  );
+
+                  const dataUrl =
+                    canvas.toDataURL(
+                      "image/jpeg",
+                      0.75
+                    );
+
+                  resolve(
+                    dataUrl
+                  );
+                };
+
+              image.src =
+                reader.result;
+            };
+
+          reader.readAsDataURL(
+            file
+          );
+        }
+      );
+
+  /* ===================================================
+     UPLOAD PICTURE
+  =================================================== */
+
+  const handleImageChange =
+    async (
+      event
+    ) => {
+      const file =
+        event.target
+          .files?.[0];
+
+      event.target.value =
+        "";
+
+      if (
+        !file
+      ) {
+        return;
+      }
+
+      const allowed = [
+        "image/jpeg",
+        "image/png",
+        "image/webp",
+      ];
+
+      if (
+        !allowed.includes(
+          file.type
+        )
+      ) {
+        setError(
+          "Only JPG, PNG, and WEBP images are allowed."
+        );
+
+        return;
+      }
+
+      if (
+        file.size >
+        5 *
+          1024 *
+          1024
+      ) {
+        setError(
+          "Please choose an image smaller than 5 MB."
+        );
+
+        return;
+      }
+
+      setUploading(
+        true
+      );
+
+      setError(
+        ""
+      );
+
+      setSuccess(
+        ""
+      );
+
+      try {
+        const preparedImage =
+          await prepareImage(
+            file
+          );
+
+        /*
+          Show immediately.
+        */
+
+        setProfileImage(
+          preparedImage
+        );
+
+        /*
+          Save permanently to MongoDB.
+        */
+
+        const response =
+          await api.put(
+            "/organization-profile/me/profile-picture",
+
+            {
+              profileImage:
+                preparedImage,
+            }
+          );
+
+        const saved =
+          response.data
+            ?.profileImage ||
+          preparedImage;
+
+        setProfileImage(
+          saved
+        );
+
+        console.log(
+          "PICTURE SAVED:",
+          {
+            exists:
+              Boolean(
+                saved
+              ),
+
+            length:
+              saved.length,
+          }
+        );
+
+        setSuccess(
+          response.data
+            ?.message ||
+            "Profile picture saved successfully."
+        );
+      } catch (
+        err
+      ) {
+        console.error(
+          "SAVE PROFILE PICTURE ERROR:",
+          err
+        );
+
+        setError(
+          err.response
+            ?.data
+            ?.message ||
+            "Unable to save profile picture."
+        );
+
+        /*
+          Reload database version if
+          save failed.
+        */
+
+        await loadProfile();
+      } finally {
+        setUploading(
+          false
+        );
+      }
+    };
+
+  /* ===================================================
+     OPEN REMOVE PICTURE CONFIRMATION
+
+     This replaces window.confirm().
+  =================================================== */
+
+  const openRemovePictureConfirm =
+    () => {
+      if (
+        uploading
+      ) {
+        return;
+      }
+
+      setShowRemovePictureConfirm(
+        true
+      );
+    };
+
+  /* ===================================================
+     REMOVE PICTURE
+  =================================================== */
+
+  const removeProfileImage =
+    async () => {
+      setUploading(
+        true
+      );
+
+      setError(
+        ""
+      );
+
+      setSuccess(
+        ""
+      );
+
+      try {
+        const response =
+          await api.delete(
+            "/organization-profile/me/profile-picture"
+          );
+
+        setProfileImage(
+          ""
+        );
+
+        setShowRemovePictureConfirm(
+          false
+        );
+
+        setSuccess(
+          response.data
+            ?.message ||
+            "Profile picture removed successfully."
+        );
+      } catch (
+        err
+      ) {
+        console.error(
+          "REMOVE PROFILE PICTURE ERROR:",
+          err
+        );
+
+        setError(
+          err.response
+            ?.data
+            ?.message ||
+            "Unable to remove profile picture."
+        );
+      } finally {
+        setUploading(
+          false
+        );
+      }
+    };
+
+  /* ===================================================
+     EDIT PROFILE
+  =================================================== */
+
+  const openEdit =
+    () => {
+      setEditForm({
+        adviser:
+          organization
+            .adviser ||
+          "",
+
+        contactNumber:
+          organization
+            .contactNumber ||
+          "",
+
+        description:
+          organization
+            .description ||
+          "",
+      });
+
+      setError(
+        ""
+      );
+
+      setSuccess(
+        ""
+      );
+
+      setShowEdit(
+        true
+      );
+    };
+
+  const handleEditChange =
+    (
+      event
+    ) => {
+      const {
+        name,
+        value,
+      } =
+        event.target;
+
+      setEditForm(
+        (
+          previous
+        ) => ({
+          ...previous,
+
+          [name]:
+            value,
+        })
+      );
+    };
+
+  /* ===================================================
+     SAVE TEXT PROFILE
+  =================================================== */
+
+  const saveProfile =
+    async (
+      event
+    ) => {
+      event.preventDefault();
+
+      setSaving(
+        true
+      );
+
+      setError(
+        ""
+      );
+
+      setSuccess(
+        ""
+      );
+
+      try {
+        const response =
+          await api.put(
+            "/organizations/me",
+
+            {
+              adviser:
+                editForm
+                  .adviser
+                  .trim(),
+
+              contactNumber:
+                editForm
+                  .contactNumber
+                  .trim(),
+
+              description:
+                editForm
+                  .description
+                  .trim(),
+            }
+          );
+
+        const updated =
+          response.data
+            ?.organization ||
+          {};
+
+        setOrganization(
+          (
+            previous
+          ) => ({
+            ...previous,
+            ...updated,
+          })
+        );
+
+        setShowEdit(
+          false
+        );
+
+        setSuccess(
+          response.data
+            ?.message ||
+            "Organization profile updated successfully."
+        );
+      } catch (
+        err
+      ) {
+        console.error(
+          "UPDATE PROFILE ERROR:",
+          err
+        );
+
+        setError(
+          err.response
+            ?.data
+            ?.message ||
+            "Unable to update organization profile."
+        );
+      } finally {
+        setSaving(
+          false
+        );
+      }
+    };
+
+  /* ===================================================
+     LOGOUT
+  =================================================== */
+
+  const handleLogout =
+    () => {
+      localStorage.removeItem(
+        "token"
+      );
+
+      localStorage.removeItem(
+        "role"
+      );
+
+      localStorage.removeItem(
+        "user"
+      );
+
+      navigate(
+        "/login",
+
+        {
+          replace:
+            true,
+        }
+      );
+    };
 
   /* ===================================================
      INITIALS
   =================================================== */
 
   const initials =
-    organization.acronym?.trim().slice(0, 4).toUpperCase() ||
-    organization.organizationName
+    organization
+      .acronym
       ?.trim()
-      .split(/\s+/)
-      .filter(Boolean)
-      .map((word) => word.charAt(0))
-      .join("")
-      .slice(0, 3)
+      .slice(
+        0,
+        4
+      )
       .toUpperCase() ||
     "NU";
-
-  /* ===================================================
-     LOAD ORGANIZATION
-  =================================================== */
-
-  const loadOrganization = async () => {
-    const response = await api.get("/organizations/me");
-
-    const org = response.data?.organization || response.data || {};
-
-    setOrganization({
-      ...EMPTY_ORGANIZATION,
-      ...org,
-    });
-
-    return org;
-  };
-
-  /* ===================================================
-     LOAD PROFILE PICTURE
-  =================================================== */
-
-  const loadProfilePicture = async () => {
-    const response = await api.get("/organization-profile/me/profile-picture", {
-      params: {
-        t: Date.now(),
-      },
-    });
-
-    const image = response.data?.profileImage || "";
-
-    setProfileImage(image);
-
-    return image;
-  };
-
-  /* ===================================================
-     LOAD PROFILE
-  =================================================== */
-
-  const loadProfile = async () => {
-    setLoading(true);
-    setError("");
-
-    try {
-      const results = await Promise.allSettled([
-        loadOrganization(),
-        loadProfilePicture(),
-      ]);
-
-      if (results[0].status === "rejected") {
-        throw results[0].reason;
-      }
-
-      if (results[1].status === "rejected") {
-        console.error("PROFILE PICTURE LOAD ERROR:", results[1].reason);
-
-        setProfileImage("");
-      }
-    } catch (err) {
-      console.error("LOAD PROFILE ERROR:", err);
-
-      setError(
-        err.response?.data?.message || "Unable to load organization profile.",
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadProfile();
-  }, []);
-
-  /* ===================================================
-     CALCULATE CROP SCALE
-  =================================================== */
-
-  const getBaseScale = () => {
-    if (!naturalSize.width || !naturalSize.height) {
-      return 1;
-    }
-
-    return Math.max(
-      CROP_SIZE / naturalSize.width,
-
-      CROP_SIZE / naturalSize.height,
-    );
-  };
-
-  /* ===================================================
-     CLAMP CROP POSITION
-
-     Prevents empty space from appearing
-     inside the crop area.
-  =================================================== */
-
-  const clampPosition = (x, y, zoomValue = zoom) => {
-    if (!naturalSize.width || !naturalSize.height) {
-      return {
-        x: 0,
-        y: 0,
-      };
-    }
-
-    const scale = getBaseScale() * zoomValue;
-
-    const displayedWidth = naturalSize.width * scale;
-
-    const displayedHeight = naturalSize.height * scale;
-
-    const maxX = Math.max(0, (displayedWidth - CROP_SIZE) / 2);
-
-    const maxY = Math.max(0, (displayedHeight - CROP_SIZE) / 2);
-
-    return {
-      x: Math.max(-maxX, Math.min(maxX, x)),
-
-      y: Math.max(-maxY, Math.min(maxY, y)),
-    };
-  };
-
-  /* ===================================================
-     SELECT IMAGE
-
-     Do NOT save yet.
-
-     First open crop/review modal.
-  =================================================== */
-
-  const handleImageSelect = (event) => {
-    const file = event.target.files?.[0];
-
-    event.target.value = "";
-
-    if (!file) {
-      return;
-    }
-
-    const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
-
-    if (!allowedTypes.includes(file.type)) {
-      setError("Only JPG, PNG, and WEBP images are allowed.");
-
-      return;
-    }
-
-    if (file.size > 8 * 1024 * 1024) {
-      setError("Please choose an image smaller than 8 MB.");
-
-      return;
-    }
-
-    setError("");
-    setSuccess("");
-
-    if (cropSource) {
-      URL.revokeObjectURL(cropSource);
-    }
-
-    const source = URL.createObjectURL(file);
-
-    setCropSource(source);
-
-    setZoom(1);
-
-    setCropX(0);
-
-    setCropY(0);
-
-    setNaturalSize({
-      width: 0,
-      height: 0,
-    });
-
-    setShowCrop(true);
-  };
-
-  /* ===================================================
-     CROP IMAGE LOADED
-  =================================================== */
-
-  const handleCropImageLoad = (event) => {
-    setNaturalSize({
-      width: event.currentTarget.naturalWidth,
-
-      height: event.currentTarget.naturalHeight,
-    });
-
-    setCropX(0);
-    setCropY(0);
-    setZoom(1);
-  };
-
-  /* ===================================================
-     POINTER DOWN
-  =================================================== */
-
-  const handlePointerDown = (event) => {
-    event.currentTarget.setPointerCapture(event.pointerId);
-
-    dragRef.current = {
-      active: true,
-
-      startClientX: event.clientX,
-
-      startClientY: event.clientY,
-
-      startCropX: cropX,
-
-      startCropY: cropY,
-    };
-  };
-
-  /* ===================================================
-     POINTER MOVE
-  =================================================== */
-
-  const handlePointerMove = (event) => {
-    if (!dragRef.current.active) {
-      return;
-    }
-
-    const nextX =
-      dragRef.current.startCropX +
-      (event.clientX - dragRef.current.startClientX);
-
-    const nextY =
-      dragRef.current.startCropY +
-      (event.clientY - dragRef.current.startClientY);
-
-    const clamped = clampPosition(nextX, nextY);
-
-    setCropX(clamped.x);
-
-    setCropY(clamped.y);
-  };
-
-  /* ===================================================
-     POINTER UP
-  =================================================== */
-
-  const handlePointerUp = (event) => {
-    dragRef.current.active = false;
-
-    try {
-      event.currentTarget.releasePointerCapture(event.pointerId);
-    } catch {
-      // Ignore.
-    }
-  };
-
-  /* ===================================================
-     ZOOM
-  =================================================== */
-
-  const handleZoomChange = (event) => {
-    const nextZoom = Number(event.target.value);
-
-    const clamped = clampPosition(cropX, cropY, nextZoom);
-
-    setZoom(nextZoom);
-
-    setCropX(clamped.x);
-
-    setCropY(clamped.y);
-  };
-
-  /* ===================================================
-     RESET CROP
-  =================================================== */
-
-  const resetCrop = () => {
-    setZoom(1);
-    setCropX(0);
-    setCropY(0);
-  };
-
-  /* ===================================================
-     CLOSE CROP MODAL
-  =================================================== */
-
-  const closeCrop = () => {
-    if (uploading) {
-      return;
-    }
-
-    setShowCrop(false);
-
-    if (cropSource) {
-      URL.revokeObjectURL(cropSource);
-    }
-
-    setCropSource("");
-
-    setNaturalSize({
-      width: 0,
-      height: 0,
-    });
-
-    resetCrop();
-  };
-
-  /* ===================================================
-     CREATE CROPPED IMAGE
-
-     Produces a 500 x 500 JPEG.
-  =================================================== */
-
-  const createCroppedImage = () => {
-    return new Promise((resolve, reject) => {
-      const image = cropImageRef.current;
-
-      if (!image || !naturalSize.width || !naturalSize.height) {
-        reject(new Error("The picture is not ready yet."));
-
-        return;
-      }
-
-      const canvas = document.createElement("canvas");
-
-      canvas.width = OUTPUT_SIZE;
-
-      canvas.height = OUTPUT_SIZE;
-
-      const context = canvas.getContext("2d");
-
-      if (!context) {
-        reject(new Error("Unable to prepare the picture."));
-
-        return;
-      }
-
-      const baseScale = getBaseScale();
-
-      const finalScale = baseScale * zoom;
-
-      /*
-            The image is positioned by its center.
-
-            Crop box center:
-            CROP_SIZE / 2
-
-            Image center:
-            crop box center + cropX/cropY
-          */
-
-      const sourceWidth = CROP_SIZE / finalScale;
-
-      const sourceHeight = CROP_SIZE / finalScale;
-
-      let sourceX =
-        naturalSize.width / 2 - (CROP_SIZE / 2 + cropX) / finalScale;
-
-      let sourceY =
-        naturalSize.height / 2 - (CROP_SIZE / 2 + cropY) / finalScale;
-
-      sourceX = Math.max(0, Math.min(naturalSize.width - sourceWidth, sourceX));
-
-      sourceY = Math.max(
-        0,
-        Math.min(naturalSize.height - sourceHeight, sourceY),
-      );
-
-      context.fillStyle = "#FFFFFF";
-
-      context.fillRect(0, 0, OUTPUT_SIZE, OUTPUT_SIZE);
-
-      context.drawImage(
-        image,
-
-        sourceX,
-        sourceY,
-
-        sourceWidth,
-        sourceHeight,
-
-        0,
-        0,
-
-        OUTPUT_SIZE,
-        OUTPUT_SIZE,
-      );
-
-      const result = canvas.toDataURL("image/jpeg", 0.88);
-
-      resolve(result);
-    });
-  };
-
-  /* ===================================================
-     SAVE CROPPED PICTURE
-  =================================================== */
-
-  const saveCroppedPicture = async () => {
-    setUploading(true);
-    setError("");
-    setSuccess("");
-
-    try {
-      const croppedImage = await createCroppedImage();
-
-      /*
-          Preview immediately.
-        */
-
-      setProfileImage(croppedImage);
-
-      /* =============================================
-           SAVE TO DATABASE
-        ============================================= */
-
-      const response = await api.put(
-        "/organization-profile/me/profile-picture",
-        {
-          profileImage: croppedImage,
-        },
-      );
-
-      const returnedImage = response.data?.profileImage || "";
-
-      if (!returnedImage) {
-        throw new Error("The server did not return the saved picture.");
-      }
-
-      /* =============================================
-           VERIFY IT FROM DATABASE
-        ============================================= */
-
-      const verifyResponse = await api.get(
-        "/organization-profile/me/profile-picture",
-        {
-          params: {
-            t: Date.now(),
-          },
-        },
-      );
-
-      const verifiedImage = verifyResponse.data?.profileImage || "";
-
-      if (!verifiedImage) {
-        throw new Error("The picture was not found after saving.");
-      }
-
-      setProfileImage(verifiedImage);
-
-      /*
-          Tell OrganizationLayout to immediately
-          update sidebar + top-right avatar.
-        */
-
-      window.dispatchEvent(
-        new CustomEvent("organizationProfileImageUpdated", {
-          detail: {
-            profileImage: verifiedImage,
-          },
-        }),
-      );
-
-      setSuccess("Profile picture saved successfully.");
-
-      setShowCrop(false);
-
-      if (cropSource) {
-        URL.revokeObjectURL(cropSource);
-      }
-
-      setCropSource("");
-    } catch (err) {
-      console.error("SAVE PROFILE PICTURE ERROR:", err);
-
-      setError(
-        err.response?.data?.message ||
-          err.message ||
-          "Unable to save profile picture.",
-      );
-
-      try {
-        await loadProfilePicture();
-      } catch {
-        setProfileImage("");
-      }
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  /* ===================================================
-     REMOVE PROFILE PICTURE
-  =================================================== */
-
-  const removeProfileImage = async () => {
-    const confirmed = window.confirm(
-      "Remove your organization profile picture?",
-    );
-
-    if (!confirmed) {
-      return;
-    }
-
-    setUploading(true);
-    setError("");
-    setSuccess("");
-
-    try {
-      const response = await api.delete(
-        "/organization-profile/me/profile-picture",
-      );
-
-      setProfileImage("");
-
-      /*
-          Update sidebar and header immediately.
-        */
-
-      window.dispatchEvent(
-        new CustomEvent("organizationProfileImageUpdated", {
-          detail: {
-            profileImage: "",
-          },
-        }),
-      );
-
-      setSuccess(
-        response.data?.message || "Profile picture removed successfully.",
-      );
-    } catch (err) {
-      console.error("REMOVE PROFILE PICTURE ERROR:", err);
-
-      setError(
-        err.response?.data?.message || "Unable to remove profile picture.",
-      );
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  /* ===================================================
-     OPEN EDIT PROFILE
-  =================================================== */
-
-  const openEdit = () => {
-    setEditForm({
-      adviser: organization.adviser || "",
-
-      contactNumber: organization.contactNumber || "",
-
-      description: organization.description || "",
-    });
-
-    setError("");
-    setSuccess("");
-
-    setShowEdit(true);
-  };
-
-  /* ===================================================
-     EDIT CHANGE
-  =================================================== */
-
-  const handleEditChange = (event) => {
-    const { name, value } = event.target;
-
-    setEditForm((previous) => ({
-      ...previous,
-
-      [name]: value,
-    }));
-  };
-
-  /* ===================================================
-     SAVE PROFILE INFORMATION
-  =================================================== */
-
-  const saveProfile = async (event) => {
-    event.preventDefault();
-
-    setSaving(true);
-    setError("");
-    setSuccess("");
-
-    try {
-      const response = await api.put("/organizations/me", {
-        adviser: editForm.adviser.trim(),
-
-        contactNumber: editForm.contactNumber.trim(),
-
-        description: editForm.description.trim(),
-      });
-
-      const updated = response.data?.organization || {};
-
-      setOrganization((previous) => ({
-        ...previous,
-        ...updated,
-      }));
-
-      /*
-          Tell layout that organization details
-          may have changed.
-        */
-
-      window.dispatchEvent(new CustomEvent("organizationProfileUpdated"));
-
-      setShowEdit(false);
-
-      setSuccess(
-        response.data?.message || "Organization profile updated successfully.",
-      );
-    } catch (err) {
-      console.error("UPDATE PROFILE ERROR:", err);
-
-      setError(
-        err.response?.data?.message || "Unable to update organization profile.",
-      );
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  /* ===================================================
-     LOGOUT
-  =================================================== */
-
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-
-    localStorage.removeItem("role");
-
-    localStorage.removeItem("user");
-
-    navigate("/login", {
-      replace: true,
-    });
-  };
 
   /* ===================================================
      LOADING
   =================================================== */
 
-  if (loading) {
+  if (
+    loading
+  ) {
     return (
       <div
         className="
@@ -813,7 +808,7 @@ export default function OrganizationProfile() {
   }
 
   /* ===================================================
-     PAGE
+     UI
   =================================================== */
 
   return (
@@ -827,40 +822,59 @@ export default function OrganizationProfile() {
         "
       >
         {/* =================================================
-            ERROR
+            ALERTS
         ================================================= */}
 
         {error && (
-          <Alert type="error" message={error} onClose={() => setError("")} />
+          <Alert
+            type="error"
+            message={
+              error
+            }
+            onClose={() =>
+              setError(
+                ""
+              )
+            }
+          />
         )}
-
-        {/* =================================================
-            SUCCESS
-        ================================================= */}
 
         {success && (
           <Alert
             type="success"
-            message={success}
-            onClose={() => setSuccess("")}
+            message={
+              success
+            }
+            onClose={() =>
+              setSuccess(
+                ""
+              )
+            }
           />
         )}
 
         {/* =================================================
-            PROFILE HEADER
+            HEADER
         ================================================= */}
 
         <motion.section
           initial={{
-            opacity: 0,
-            y: 15,
+            opacity:
+              0,
+
+            y:
+              15,
           }}
           animate={{
-            opacity: 1,
-            y: 0,
+            opacity:
+              1,
+
+            y:
+              0,
           }}
           className="
             overflow-hidden
+
             rounded-[20px]
 
             bg-gradient-to-r
@@ -872,7 +886,6 @@ export default function OrganizationProfile() {
             py-7
 
             text-white
-            shadow-sm
           "
         >
           <div
@@ -885,9 +898,9 @@ export default function OrganizationProfile() {
               md:flex-row
             "
           >
-            {/* ===========================================
-                PROFILE PICTURE
-            ============================================ */}
+            {/* =================================================
+                PROFILE PHOTO
+            ================================================= */}
 
             <div
               className="
@@ -915,17 +928,27 @@ export default function OrganizationProfile() {
                   shadow-lg
                 "
                 style={{
-                  backgroundColor: organization.color || "#FACC15",
+                  backgroundColor:
+                    organization
+                      .color ||
+                    "#FACC15",
                 }}
               >
                 {profileImage ? (
                   <img
-                    src={profileImage}
+                    src={
+                      profileImage
+                    }
                     alt={`${organization.organizationName} Profile`}
                     className="
+                      absolute
+                      inset-0
+
                       h-full
                       w-full
+
                       object-cover
+                      object-center
                     "
                   />
                 ) : (
@@ -936,38 +959,16 @@ export default function OrganizationProfile() {
                       text-blue-950
                     "
                   >
-                    {initials}
+                    {
+                      initials
+                    }
                   </span>
-                )}
-
-                {uploading && (
-                  <div
-                    className="
-                      absolute
-                      inset-0
-
-                      flex
-                      items-center
-                      justify-center
-
-                      bg-blue-950/70
-                    "
-                  >
-                    <MaterialIcon
-                      name="hourglass_top"
-                      className="
-                        animate-pulse
-                        text-[25px]
-                        text-white
-                      "
-                    />
-                  </div>
                 )}
               </div>
 
-              {/* =========================================
-                  SELECT PICTURE
-              ========================================== */}
+              {/* =================================================
+                  CHANGE PICTURE
+              ================================================= */}
 
               <label
                 className={`
@@ -990,38 +991,57 @@ export default function OrganizationProfile() {
                   font-black
                   text-blue-950
 
-                  shadow-sm
-
                   transition
 
                   hover:bg-yellow-300
-                  hover:shadow-md
 
-                  ${uploading ? "pointer-events-none opacity-60" : ""}
+                  ${
+                    uploading
+                      ? "pointer-events-none opacity-60"
+                      : ""
+                  }
                 `}
               >
                 <MaterialIcon
-                  name="photo_camera"
+                  name={
+                    uploading
+                      ? "hourglass_top"
+                      : "photo_camera"
+                  }
                   className="
                     text-[15px]
                   "
                 />
 
-                {profileImage ? "Change Picture" : "Add Picture"}
+                {uploading
+                  ? "Saving..."
+                  : profileImage
+                    ? "Change Picture"
+                    : "Add Picture"}
 
                 <input
                   hidden
                   type="file"
                   accept="image/jpeg,image/png,image/webp"
-                  onChange={handleImageSelect}
+                  onChange={
+                    handleImageChange
+                  }
                 />
               </label>
+
+              {/* =================================================
+                  REMOVE PICTURE
+              ================================================= */}
 
               {profileImage && (
                 <button
                   type="button"
-                  disabled={uploading}
-                  onClick={removeProfileImage}
+                  disabled={
+                    uploading
+                  }
+                  onClick={
+                    openRemovePictureConfirm
+                  }
                   className="
                     mx-auto
                     mt-2
@@ -1031,7 +1051,12 @@ export default function OrganizationProfile() {
                     font-bold
                     text-red-200
 
-                    hover:text-white
+                    transition
+
+                    hover:text-red-100
+
+                    disabled:cursor-not-allowed
+                    disabled:opacity-50
                   "
                 >
                   Remove Picture
@@ -1039,13 +1064,14 @@ export default function OrganizationProfile() {
               )}
             </div>
 
-            {/* ===========================================
-                ORGANIZATION INFORMATION
-            ============================================ */}
+            {/* =================================================
+                ORGANIZATION INFO
+            ================================================= */}
 
             <div
               className="
                 text-center
+
                 md:text-left
               "
             >
@@ -1071,35 +1097,44 @@ export default function OrganizationProfile() {
               <h1
                 className="
                   mt-3
+
                   text-[30px]
                   font-black
-                  leading-tight
                 "
               >
-                {organization.organizationName || "Organization"}
+                {organization
+                  .organizationName ||
+                  "Organization"}
               </h1>
 
               <p
                 className="
                   mt-1
+
                   text-[12px]
                   font-bold
                   text-gray-200
                 "
               >
-                {organization.acronym}
+                {
+                  organization
+                    .acronym
+                }
               </p>
 
               <p
                 className="
                   mt-4
+
                   max-w-lg
+
                   text-[11px]
                   leading-5
                   text-gray-300
                 "
               >
-                {organization.description ||
+                {organization
+                  .description ||
                   "No organization description has been added yet."}
               </p>
             </div>
@@ -1107,7 +1142,7 @@ export default function OrganizationProfile() {
         </motion.section>
 
         {/* =================================================
-            INFORMATION CARDS
+            INFORMATION
         ================================================= */}
 
         <div
@@ -1123,21 +1158,30 @@ export default function OrganizationProfile() {
             title="Organization Information"
             items={[
               {
-                label: "Organization Name",
+                label:
+                  "Organization Name",
 
-                value: organization.organizationName,
+                value:
+                  organization
+                    .organizationName,
               },
 
               {
-                label: "Acronym",
+                label:
+                  "Acronym",
 
-                value: organization.acronym,
+                value:
+                  organization
+                    .acronym,
               },
 
               {
-                label: "Adviser",
+                label:
+                  "Adviser",
 
-                value: organization.adviser,
+                value:
+                  organization
+                    .adviser,
               },
             ]}
           />
@@ -1147,15 +1191,21 @@ export default function OrganizationProfile() {
             title="Contact Information"
             items={[
               {
-                label: "Email Address",
+                label:
+                  "Email Address",
 
-                value: organization.email,
+                value:
+                  organization
+                    .email,
               },
 
               {
-                label: "Contact Number",
+                label:
+                  "Contact Number",
 
-                value: organization.contactNumber,
+                value:
+                  organization
+                    .contactNumber,
               },
             ]}
           />
@@ -1189,11 +1239,13 @@ export default function OrganizationProfile() {
           <p
             className="
               mt-1
+
               text-[11px]
               text-gray-500
             "
           >
-            Manage your organization information and account.
+            Manage your organization
+            information and account.
           </p>
 
           <div
@@ -1206,18 +1258,75 @@ export default function OrganizationProfile() {
               sm:grid-cols-2
             "
           >
-            <AccountCard
-              icon="edit"
-              title="Edit Profile"
-              description="Update organization information."
-              onClick={openEdit}
-            />
+            {/* =================================================
+                EDIT PROFILE
+            ================================================= */}
+
+            <button
+              type="button"
+              onClick={
+                openEdit
+              }
+              className="
+                rounded-xl
+
+                bg-gray-100
+
+                p-4
+
+                text-left
+
+                transition
+
+                hover:-translate-y-0.5
+                hover:bg-blue-50
+                hover:shadow-md
+              "
+            >
+              <MaterialIcon
+                name="edit"
+                className="
+                  text-[20px]
+                  text-yellow-500
+                "
+              />
+
+              <h3
+                className="
+                  mt-3
+
+                  text-[12px]
+                  font-black
+                  text-blue-950
+                "
+              >
+                Edit Profile
+              </h3>
+
+              <p
+                className="
+                  mt-1
+
+                  text-[10px]
+                  text-gray-600
+                "
+              >
+                Update organization
+                information.
+              </p>
+            </button>
+
+            {/* =================================================
+                CHANGE PASSWORD
+            ================================================= */}
 
             <Link
               to="/organization/change-password"
               className="
                 rounded-xl
+
                 bg-gray-100
+
                 p-4
 
                 transition
@@ -1238,6 +1347,7 @@ export default function OrganizationProfile() {
               <h3
                 className="
                   mt-3
+
                   text-[12px]
                   font-black
                   text-blue-950
@@ -1249,19 +1359,27 @@ export default function OrganizationProfile() {
               <p
                 className="
                   mt-1
+
                   text-[10px]
                   text-gray-600
                 "
               >
-                Update your account security.
+                Update your account
+                security.
               </p>
             </Link>
+
+            {/* =================================================
+                ADMIN REQUEST
+            ================================================= */}
 
             <Link
               to="/organization/admin-request"
               className="
                 rounded-xl
+
                 bg-gray-100
+
                 p-4
 
                 transition
@@ -1282,6 +1400,7 @@ export default function OrganizationProfile() {
               <h3
                 className="
                   mt-3
+
                   text-[12px]
                   font-black
                   text-blue-950
@@ -1293,28 +1412,37 @@ export default function OrganizationProfile() {
               <p
                 className="
                   mt-1
+
                   text-[10px]
                   text-gray-600
                 "
               >
-                Send concerns and requests.
+                Send concerns and
+                requests.
               </p>
             </Link>
 
+            {/* =================================================
+                LOGOUT
+            ================================================= */}
+
             <button
               type="button"
-              onClick={handleLogout}
+              onClick={
+                handleLogout
+              }
               className="
                 rounded-xl
+
                 bg-red-50
+
                 p-4
+
                 text-left
 
                 transition
 
-                hover:-translate-y-0.5
                 hover:bg-red-100
-                hover:shadow-md
               "
             >
               <MaterialIcon
@@ -1328,6 +1456,7 @@ export default function OrganizationProfile() {
               <h3
                 className="
                   mt-3
+
                   text-[12px]
                   font-black
                   text-red-700
@@ -1339,6 +1468,7 @@ export default function OrganizationProfile() {
               <p
                 className="
                   mt-1
+
                   text-[10px]
                   text-red-600
                 "
@@ -1351,10 +1481,13 @@ export default function OrganizationProfile() {
       </div>
 
       {/* =================================================
-          CROP / REVIEW MODAL
+          REMOVE PROFILE PICTURE CONFIRMATION
+
+          CUSTOM MODAL
+          NO browser "vercel.app says" popup.
       ================================================= */}
 
-      {showCrop && (
+      {showRemovePictureConfirm && (
         <div
           className="
             fixed
@@ -1365,445 +1498,210 @@ export default function OrganizationProfile() {
             items-center
             justify-center
 
-            bg-black/75
+            bg-black/65
 
             p-4
 
             backdrop-blur-sm
           "
+          onClick={() => {
+            if (
+              !uploading
+            ) {
+              setShowRemovePictureConfirm(
+                false
+              );
+            }
+          }}
         >
           <motion.div
             initial={{
-              opacity: 0,
-              scale: 0.96,
+              opacity:
+                0,
+
+              scale:
+                0.95,
+
+              y:
+                10,
             }}
             animate={{
-              opacity: 1,
-              scale: 1,
+              opacity:
+                1,
+
+              scale:
+                1,
+
+              y:
+                0,
             }}
+            transition={{
+              duration:
+                0.18,
+            }}
+            onClick={(
+              event
+            ) =>
+              event.stopPropagation()
+            }
             className="
               w-full
-              max-w-[520px]
+              max-w-[430px]
 
               overflow-hidden
 
-              rounded-[22px]
+              rounded-[20px]
 
               bg-white
 
               shadow-2xl
             "
           >
-            {/* ===========================================
-                CROP HEADER
-            ============================================ */}
+            {/* =================================================
+                MODAL HEADER
+            ================================================= */}
 
             <div
               className="
-                flex
-                items-start
-                justify-between
+                bg-gradient-to-r
+                from-[#07152F]
+                via-[#08284A]
+                to-[#0B4B79]
 
-                border-b
-                border-gray-100
+                px-6
+                py-5
 
-                px-5
-                py-4
-              "
-            >
-              <div>
-                <p
-                  className="
-                    text-[9px]
-                    font-black
-                    uppercase
-                    tracking-[0.15em]
-                    text-yellow-600
-                  "
-                >
-                  Review Picture
-                </p>
-
-                <h2
-                  className="
-                    mt-1
-                    text-[19px]
-                    font-black
-                    text-blue-950
-                  "
-                >
-                  Crop Profile Picture
-                </h2>
-
-                <p
-                  className="
-                    mt-1
-                    text-[10px]
-                    text-gray-500
-                  "
-                >
-                  Drag the image to reposition it, then use the slider to zoom.
-                </p>
-              </div>
-
-              <button
-                type="button"
-                disabled={uploading}
-                onClick={closeCrop}
-                className="
-                  flex
-                  h-8
-                  w-8
-                  items-center
-                  justify-center
-
-                  rounded-full
-
-                  bg-gray-100
-                  text-gray-600
-
-                  hover:bg-gray-200
-                "
-              >
-                <MaterialIcon
-                  name="close"
-                  className="
-                    text-[17px]
-                  "
-                />
-              </button>
-            </div>
-
-            {/* ===========================================
-                CROP WORKSPACE
-            ============================================ */}
-
-            <div
-              className="
-                bg-[#0B1A38]
-
-                px-5
-                py-7
+                text-white
               "
             >
               <div
                 className="
                   flex
-                  justify-center
+                  items-center
+                  gap-3
                 "
               >
                 <div
-                  onPointerDown={handlePointerDown}
-                  onPointerMove={handlePointerMove}
-                  onPointerUp={handlePointerUp}
-                  onPointerCancel={handlePointerUp}
                   className="
-                    relative
+                    flex
+                    h-11
+                    w-11
+                    shrink-0
+                    items-center
+                    justify-center
 
-                    h-[280px]
-                    w-[280px]
+                    rounded-xl
 
-                    cursor-grab
+                    bg-red-500/15
 
-                    overflow-hidden
-
-                    rounded-full
-
-                    border-[4px]
-                    border-yellow-400
-
-                    bg-black
-
-                    shadow-2xl
-
-                    active:cursor-grabbing
+                    text-red-300
                   "
-                  style={{
-                    touchAction: "none",
-                  }}
                 >
-                  {cropSource && (
-                    <img
-                      ref={cropImageRef}
-                      src={cropSource}
-                      alt="Crop Preview"
-                      draggable="false"
-                      onLoad={handleCropImageLoad}
-                      className="
-                        pointer-events-none
-
-                        absolute
-                        left-1/2
-                        top-1/2
-
-                        max-w-none
-
-                        select-none
-                      "
-                      style={{
-                        width: naturalSize.width
-                          ? `${naturalSize.width * getBaseScale()}px`
-                          : "auto",
-
-                        height: naturalSize.height
-                          ? `${naturalSize.height * getBaseScale()}px`
-                          : "auto",
-
-                        transform: `translate(calc(-50% + ${cropX}px), calc(-50% + ${cropY}px)) scale(${zoom})`,
-
-                        transformOrigin: "center center",
-                      }}
-                    />
-                  )}
-
-                  {/* CENTER GUIDE */}
-
-                  <div
+                  <MaterialIcon
+                    name="delete"
                     className="
-                      pointer-events-none
-
-                      absolute
-                      inset-0
-
-                      rounded-full
-
-                      ring-1
-                      ring-inset
-                      ring-white/40
-                    "
-                  />
-
-                  <div
-                    className="
-                      pointer-events-none
-
-                      absolute
-                      left-1/2
-                      top-0
-
-                      h-full
-                      w-px
-
-                      -translate-x-1/2
-
-                      bg-white/15
-                    "
-                  />
-
-                  <div
-                    className="
-                      pointer-events-none
-
-                      absolute
-                      left-0
-                      top-1/2
-
-                      h-px
-                      w-full
-
-                      -translate-y-1/2
-
-                      bg-white/15
+                      text-[23px]
                     "
                   />
                 </div>
-              </div>
 
-              <p
-                className="
-                  mt-4
-                  text-center
-                  text-[9px]
-                  font-bold
-                  text-blue-200
-                "
-              >
-                Drag the picture inside the circle
-              </p>
+                <div>
+                  <p
+                    className="
+                      text-[8px]
+                      font-black
+                      uppercase
+                      tracking-[0.15em]
+                      text-yellow-400
+                    "
+                  >
+                    Confirmation
+                  </p>
+
+                  <h2
+                    className="
+                      mt-1
+
+                      text-[19px]
+                      font-black
+                    "
+                  >
+                    Remove Profile Picture?
+                  </h2>
+                </div>
+              </div>
             </div>
 
-            {/* ===========================================
-                ZOOM / CONTROLS
-            ============================================ */}
+            {/* =================================================
+                MODAL CONTENT
+            ================================================= */}
 
             <div
               className="
-                px-5
+                px-6
                 py-5
               "
             >
               <div
                 className="
                   flex
-                  items-center
-                  justify-between
-                "
-              >
-                <div
-                  className="
-                    flex
-                    items-center
-                    gap-2
-                  "
-                >
-                  <MaterialIcon
-                    name="zoom_out"
-                    className="
-                      text-[18px]
-                      text-gray-500
-                    "
-                  />
-
-                  <span
-                    className="
-                      text-[10px]
-                      font-black
-                      text-blue-950
-                    "
-                  >
-                    Zoom
-                  </span>
-                </div>
-
-                <span
-                  className="
-                    text-[9px]
-                    font-bold
-                    text-gray-500
-                  "
-                >
-                  {Math.round(zoom * 100)}%
-                </span>
-              </div>
-
-              <div
-                className="
-                  mt-3
-
-                  flex
-                  items-center
+                  items-start
                   gap-3
-                "
-              >
-                <MaterialIcon
-                  name="remove"
-                  className="
-                    text-[16px]
-                    text-gray-400
-                  "
-                />
-
-                <input
-                  type="range"
-                  min="1"
-                  max="3"
-                  step="0.01"
-                  value={zoom}
-                  onChange={handleZoomChange}
-                  className="
-                    w-full
-                    accent-yellow-400
-                  "
-                />
-
-                <MaterialIcon
-                  name="add"
-                  className="
-                    text-[16px]
-                    text-gray-400
-                  "
-                />
-              </div>
-
-              <button
-                type="button"
-                onClick={resetCrop}
-                className="
-                  mt-3
-
-                  inline-flex
-                  items-center
-                  gap-1
-
-                  text-[9px]
-                  font-bold
-                  text-blue-700
-
-                  hover:text-blue-900
-                "
-              >
-                <MaterialIcon
-                  name="restart_alt"
-                  className="
-                    text-[15px]
-                  "
-                />
-                Reset Position
-              </button>
-
-              {/* =========================================
-                  REVIEW NOTE
-              ========================================== */}
-
-              <div
-                className="
-                  mt-4
 
                   rounded-xl
 
                   border
-                  border-yellow-200
+                  border-red-100
 
-                  bg-yellow-50
+                  bg-red-50
 
-                  p-3
+                  p-4
                 "
               >
-                <div
+                <MaterialIcon
+                  name="warning"
                   className="
-                    flex
-                    items-start
-                    gap-2
+                    mt-[1px]
+
+                    shrink-0
+
+                    text-[20px]
+                    text-red-500
                   "
-                >
-                  <MaterialIcon
-                    name="visibility"
+                />
+
+                <div>
+                  <p
                     className="
-                      mt-0.5
-                      text-[16px]
-                      text-yellow-600
+                      text-[11px]
+                      font-black
+                      text-red-800
                     "
-                  />
+                  >
+                    Are you sure?
+                  </p>
 
-                  <div>
-                    <p
-                      className="
-                        text-[10px]
-                        font-black
-                        text-blue-950
-                      "
-                    >
-                      Review before saving
-                    </p>
+                  <p
+                    className="
+                      mt-1
 
-                    <p
-                      className="
-                        mt-1
-                        text-[9px]
-                        leading-4
-                        text-gray-600
-                      "
-                    >
-                      This circular preview shows how your profile picture will
-                      appear in your profile, sidebar, and header.
-                    </p>
-                  </div>
+                      text-[10px]
+                      leading-5
+                      text-red-700
+                    "
+                  >
+                    Your current
+                    organization profile
+                    picture will be removed.
+                    You can upload another
+                    picture anytime.
+                  </p>
                 </div>
               </div>
 
-              {/* =========================================
-                  ACTION BUTTONS
-              ========================================== */}
+              {/* =================================================
+                  MODAL BUTTONS
+              ================================================= */}
 
               <div
                 className="
@@ -1814,63 +1712,115 @@ export default function OrganizationProfile() {
                   gap-3
                 "
               >
-                <button
-                  type="button"
-                  disabled={uploading}
-                  onClick={closeCrop}
-                  className="
-                    rounded-xl
-
-                    bg-gray-100
-
-                    py-3
-
-                    text-[10px]
-                    font-black
-                    text-gray-700
-
-                    hover:bg-gray-200
-
-                    disabled:opacity-50
-                  "
-                >
-                  Cancel
-                </button>
+                {/* CANCEL */}
 
                 <button
                   type="button"
-                  disabled={uploading || !naturalSize.width}
-                  onClick={saveCroppedPicture}
+                  disabled={
+                    uploading
+                  }
+                  onClick={() =>
+                    setShowRemovePictureConfirm(
+                      false
+                    )
+                  }
                   className="
                     flex
+                    min-h-11
                     items-center
                     justify-center
                     gap-2
 
                     rounded-xl
 
-                    bg-yellow-400
+                    border
+                    border-gray-200
 
-                    py-3
+                    bg-gray-100
+
+                    px-4
 
                     text-[10px]
                     font-black
                     text-blue-950
 
-                    hover:bg-yellow-300
+                    transition
+
+                    hover:bg-gray-200
 
                     disabled:cursor-not-allowed
                     disabled:opacity-50
                   "
                 >
                   <MaterialIcon
-                    name={uploading ? "hourglass_top" : "check"}
+                    name="close"
                     className="
-                      text-[16px]
+                      text-[17px]
                     "
                   />
 
-                  {uploading ? "Saving..." : "Save Picture"}
+                  Cancel
+                </button>
+
+                {/* REMOVE */}
+
+                <button
+                  type="button"
+                  disabled={
+                    uploading
+                  }
+                  onClick={
+                    removeProfileImage
+                  }
+                  className="
+                    flex
+                    min-h-11
+                    items-center
+                    justify-center
+                    gap-2
+
+                    rounded-xl
+
+                    bg-red-600
+
+                    px-4
+
+                    text-[10px]
+                    font-black
+                    text-white
+
+                    transition
+
+                    hover:bg-red-700
+
+                    disabled:cursor-not-allowed
+                    disabled:opacity-50
+                  "
+                >
+                  {uploading ? (
+                    <>
+                      <MaterialIcon
+                        name="progress_activity"
+                        className="
+                          animate-spin
+                          text-[17px]
+                        "
+                      />
+
+                      Removing...
+                    </>
+                  ) : (
+                    <>
+                      <MaterialIcon
+                        name="delete"
+                        className="
+                          text-[17px]
+                        "
+                      />
+
+                      Remove Picture
+                    </>
+                  )}
                 </button>
               </div>
             </div>
@@ -1899,23 +1849,36 @@ export default function OrganizationProfile() {
 
             backdrop-blur-sm
           "
-          onClick={() => {
-            if (!saving) {
-              setShowEdit(false);
-            }
-          }}
+          onClick={() =>
+            !saving &&
+            setShowEdit(
+              false
+            )
+          }
         >
           <motion.form
             initial={{
-              opacity: 0,
-              scale: 0.97,
+              opacity:
+                0,
+
+              scale:
+                0.97,
             }}
             animate={{
-              opacity: 1,
-              scale: 1,
+              opacity:
+                1,
+
+              scale:
+                1,
             }}
-            onSubmit={saveProfile}
-            onClick={(event) => event.stopPropagation()}
+            onSubmit={
+              saveProfile
+            }
+            onClick={(
+              event
+            ) =>
+              event.stopPropagation()
+            }
             className="
               w-full
               max-w-lg
@@ -1952,6 +1915,7 @@ export default function OrganizationProfile() {
                 <h2
                   className="
                     mt-1
+
                     text-[19px]
                     font-black
                     text-blue-950
@@ -1963,7 +1927,11 @@ export default function OrganizationProfile() {
 
               <button
                 type="button"
-                onClick={() => setShowEdit(false)}
+                onClick={() =>
+                  setShowEdit(
+                    false
+                  )
+                }
                 className="
                   flex
                   h-8
@@ -1976,51 +1944,90 @@ export default function OrganizationProfile() {
                   bg-gray-100
                 "
               >
-                <MaterialIcon name="close" />
+                <MaterialIcon
+                  name="close"
+                />
               </button>
             </div>
+
+            {/* =================================================
+                ADVISER
+            ================================================= */}
 
             <div
               className="
                 mt-5
               "
             >
-              <FieldLabel>Adviser</FieldLabel>
+              <FieldLabel>
+                Adviser
+              </FieldLabel>
 
               <input
                 name="adviser"
-                value={editForm.adviser}
-                onChange={handleEditChange}
-                className={inputClass}
+                value={
+                  editForm
+                    .adviser
+                }
+                onChange={
+                  handleEditChange
+                }
+                className={
+                  inputClass
+                }
               />
             </div>
+
+            {/* =================================================
+                CONTACT
+            ================================================= */}
 
             <div
               className="
                 mt-4
               "
             >
-              <FieldLabel>Contact Number</FieldLabel>
+              <FieldLabel>
+                Contact Number
+              </FieldLabel>
 
               <input
                 name="contactNumber"
-                value={editForm.contactNumber}
-                onChange={handleEditChange}
-                className={inputClass}
+                value={
+                  editForm
+                    .contactNumber
+                }
+                onChange={
+                  handleEditChange
+                }
+                className={
+                  inputClass
+                }
               />
             </div>
+
+            {/* =================================================
+                DESCRIPTION
+            ================================================= */}
 
             <div
               className="
                 mt-4
               "
             >
-              <FieldLabel>Description</FieldLabel>
+              <FieldLabel>
+                Description
+              </FieldLabel>
 
               <textarea
                 name="description"
-                value={editForm.description}
-                onChange={handleEditChange}
+                value={
+                  editForm
+                    .description
+                }
+                onChange={
+                  handleEditChange
+                }
                 rows="5"
                 className={`
                   ${inputClass}
@@ -2031,6 +2038,10 @@ export default function OrganizationProfile() {
                 `}
               />
             </div>
+
+            {/* =================================================
+                BUTTONS
+            ================================================= */}
 
             <div
               className="
@@ -2043,7 +2054,11 @@ export default function OrganizationProfile() {
             >
               <button
                 type="button"
-                onClick={() => setShowEdit(false)}
+                onClick={() =>
+                  setShowEdit(
+                    false
+                  )
+                }
                 className="
                   rounded-xl
 
@@ -2053,7 +2068,6 @@ export default function OrganizationProfile() {
 
                   text-[10px]
                   font-black
-                  text-gray-700
                 "
               >
                 Cancel
@@ -2061,7 +2075,9 @@ export default function OrganizationProfile() {
 
               <button
                 type="submit"
-                disabled={saving}
+                disabled={
+                  saving
+                }
                 className="
                   rounded-xl
 
@@ -2076,67 +2092,15 @@ export default function OrganizationProfile() {
                   disabled:opacity-50
                 "
               >
-                {saving ? "Saving..." : "Save Profile"}
+                {saving
+                  ? "Saving..."
+                  : "Save Profile"}
               </button>
             </div>
           </motion.form>
         </div>
       )}
     </>
-  );
-}
-
-/* =====================================================
-   ACCOUNT CARD
-===================================================== */
-
-function AccountCard({ icon, title, description, onClick }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="
-        rounded-xl
-        bg-gray-100
-        p-4
-        text-left
-
-        transition
-
-        hover:-translate-y-0.5
-        hover:bg-blue-50
-        hover:shadow-md
-      "
-    >
-      <MaterialIcon
-        name={icon}
-        className="
-          text-[20px]
-          text-yellow-500
-        "
-      />
-
-      <h3
-        className="
-          mt-3
-          text-[12px]
-          font-black
-          text-blue-950
-        "
-      >
-        {title}
-      </h3>
-
-      <p
-        className="
-          mt-1
-          text-[10px]
-          text-gray-600
-        "
-      >
-        {description}
-      </p>
-    </button>
   );
 }
 
@@ -2167,10 +2131,12 @@ const inputClass = `
 `;
 
 /* =====================================================
-   FIELD LABEL
+   LABEL
 ===================================================== */
 
-function FieldLabel({ children }) {
+function FieldLabel({
+  children,
+}) {
   return (
     <label
       className="
@@ -2185,16 +2151,23 @@ function FieldLabel({ children }) {
 }
 
 /* =====================================================
-   INFO CARD
+   INFORMATION CARD
 ===================================================== */
 
-function InfoCard({ icon, title, items }) {
+function InfoCard({
+  icon,
+  title,
+  items,
+}) {
   return (
     <div
       className="
         rounded-[20px]
+
         bg-white
+
         p-5
+
         shadow-sm
       "
     >
@@ -2205,31 +2178,18 @@ function InfoCard({ icon, title, items }) {
           gap-3
         "
       >
-        <div
+        <MaterialIcon
+          name={
+            icon
+          }
           className="
-            flex
-            h-9
-            w-9
-            items-center
-            justify-center
-
-            rounded-xl
-
-            bg-yellow-50
+            text-[21px]
+            text-yellow-500
           "
-        >
-          <MaterialIcon
-            name={icon}
-            className="
-              text-[20px]
-              text-yellow-500
-            "
-          />
-        </div>
+        />
 
         <h2
           className="
-            pt-1.5
             text-[16px]
             font-black
             text-blue-950
@@ -2245,33 +2205,46 @@ function InfoCard({ icon, title, items }) {
           space-y-4
         "
       >
-        {items.map((item, index) => (
-          <div key={`${item.label}-${index}`}>
-            <p
-              className="
+        {items.map(
+          (
+            item,
+            index
+          ) => (
+            <div
+              key={
+                `${item.label}-${index}`
+              }
+            >
+              <p
+                className="
                   text-[8px]
                   font-bold
                   uppercase
                   text-gray-500
                 "
-            >
-              {item.label}
-            </p>
+              >
+                {
+                  item.label
+                }
+              </p>
 
-            <p
-              className="
+              <p
+                className="
                   mt-1
+
                   break-words
 
                   text-[11px]
                   font-bold
                   text-blue-950
                 "
-            >
-              {item.value || "Not provided"}
-            </p>
-          </div>
-        ))}
+              >
+                {item.value ||
+                  "Not provided"}
+              </p>
+            </div>
+          )
+        )}
       </div>
     </div>
   );
@@ -2281,8 +2254,14 @@ function InfoCard({ icon, title, items }) {
    ALERT
 ===================================================== */
 
-function Alert({ type, message, onClose }) {
-  const success = type === "success";
+function Alert({
+  type,
+  message,
+  onClose,
+}) {
+  const success =
+    type ===
+    "success";
 
   return (
     <div
@@ -2325,16 +2304,27 @@ function Alert({ type, message, onClose }) {
         "
       >
         <MaterialIcon
-          name={success ? "check_circle" : "error"}
+          name={
+            success
+              ? "check_circle"
+              : "error"
+          }
           className="
             text-[16px]
           "
         />
 
-        <span>{message}</span>
+        <span>
+          {message}
+        </span>
       </div>
 
-      <button type="button" onClick={onClose}>
+      <button
+        type="button"
+        onClick={
+          onClose
+        }
+      >
         <MaterialIcon
           name="close"
           className="

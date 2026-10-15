@@ -1,5 +1,9 @@
 import mongoose from "mongoose";
 
+/* =====================================================
+   IMAGE FILE
+===================================================== */
+
 const imageFileSchema =
   new mongoose.Schema(
     {
@@ -7,6 +11,13 @@ const imageFileSchema =
         type: String,
         default: "",
       },
+
+      /*
+        Kept as metadata.
+
+        This is NOT a physical file
+        on the Vercel filesystem.
+      */
 
       fileName: {
         type: String,
@@ -22,11 +33,34 @@ const imageFileSchema =
         type: Number,
         default: 0,
       },
+
+      /*
+        IMPORTANT:
+
+        The actual image bytes are
+        stored directly in MongoDB.
+
+        This replaces writing to:
+
+        uploads/announcement-images
+
+        which does not work reliably
+        on Vercel's read-only runtime.
+      */
+
+      data: {
+        type: Buffer,
+        default: null,
+      },
     },
     {
       _id: false,
     }
   );
+
+/* =====================================================
+   ANNOUNCEMENT
+===================================================== */
 
 const announcementSchema =
   new mongoose.Schema(
@@ -64,28 +98,39 @@ const announcementSchema =
 
       title: {
         type: String,
+
         required: true,
+
         trim: true,
+
+        maxlength: 150,
       },
 
       content: {
         type: String,
+
         required: true,
+
         trim: true,
+
+        maxlength: 5000,
       },
 
       /*
-        Optional event date.
+        YYYY-MM-DD
 
-        We store YYYY-MM-DD as a
-        string so the date does not
-        shift because of timezone.
+        Kept as String to prevent
+        timezone date shifting.
       */
 
       eventDate: {
         type: String,
         default: "",
       },
+
+      /*
+        Optional announcement image.
+      */
 
       imageFile: {
         type: imageFileSchema,
@@ -133,6 +178,10 @@ const announcementSchema =
       timestamps: true,
     }
   );
+
+/* =====================================================
+   MODEL
+===================================================== */
 
 export default mongoose.model(
   "Announcement",

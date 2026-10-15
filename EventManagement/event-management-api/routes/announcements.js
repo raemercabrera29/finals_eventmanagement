@@ -1,11 +1,5 @@
 import express from "express";
 import multer from "multer";
-import fs from "fs";
-import path from "path";
-
-import {
-  fileURLToPath,
-} from "url";
 
 import Announcement from "../models/Announcement.js";
 
@@ -31,94 +25,18 @@ const allowedImageTypes = [
 ];
 
 /* =====================================================
-   UPLOAD DIRECTORY
-===================================================== */
-
-const __filename =
-  fileURLToPath(
-    import.meta.url
-  );
-
-const __dirname =
-  path.dirname(
-    __filename
-  );
-
-const uploadDirectory =
-  path.join(
-    __dirname,
-    "..",
-    "uploads",
-    "announcement-images"
-  );
-
-if (
-  !fs.existsSync(
-    uploadDirectory
-  )
-) {
-  fs.mkdirSync(
-    uploadDirectory,
-    {
-      recursive: true,
-    }
-  );
-}
-
-/* =====================================================
    MULTER
+
+   IMPORTANT:
+
+   Do NOT use diskStorage on Vercel.
+
+   The uploaded image stays in memory
+   and is immediately stored in MongoDB.
 ===================================================== */
 
 const storage =
-  multer.diskStorage({
-    destination(
-      req,
-      file,
-      callback
-    ) {
-      callback(
-        null,
-        uploadDirectory
-      );
-    },
-
-    filename(
-      req,
-      file,
-      callback
-    ) {
-      const extension =
-        path
-          .extname(
-            file.originalname
-          )
-          .toLowerCase();
-
-      const cleanName =
-        path
-          .basename(
-            file.originalname,
-            extension
-          )
-          .replace(
-            /[^a-zA-Z0-9-_]/g,
-            "-"
-          )
-          .replace(
-            /-+/g,
-            "-"
-          )
-          .slice(0, 80);
-
-      callback(
-        null,
-        `${Date.now()}-${Math.round(
-          Math.random() *
-            1e9
-        )}-${cleanName}${extension}`
-      );
-    },
-  });
+  multer.memoryStorage();
 
 const upload =
   multer({
@@ -154,39 +72,85 @@ const upload =
   });
 
 /* =====================================================
-   DELETE FILE HELPER
+   CREATE IMAGE FILE NAME
+
+   This is metadata only.
+
+   No physical file is created.
 ===================================================== */
 
-function removeUploadedFile(
+function createImageFileName(
   file
 ) {
-  if (!file?.path) {
-    return;
+  let extension =
+    "";
+
+  if (
+    file.mimetype ===
+    "image/jpeg"
+  ) {
+    extension =
+      ".jpg";
+  } else if (
+    file.mimetype ===
+    "image/png"
+  ) {
+    extension =
+      ".png";
+  } else if (
+    file.mimetype ===
+    "image/webp"
+  ) {
+    extension =
+      ".webp";
   }
 
-  try {
-    if (
-      fs.existsSync(
-        file.path
-      )
-    ) {
-      fs.unlinkSync(
-        file.path
-      );
-    }
-  } catch (error) {
-    console.error(
-      "Unable to remove uploaded image:",
-      error
+  const originalName =
+    String(
+      file.originalname ||
+        "announcement-image"
     );
-  }
+
+  const cleanName =
+    originalName
+      .replace(
+        /\.[^/.]+$/,
+        ""
+      )
+      .replace(
+        /[^a-zA-Z0-9-_]/g,
+        "-"
+      )
+      .replace(
+        /-+/g,
+        "-"
+      )
+      .replace(
+        /^-+|-+$/g,
+        ""
+      )
+      .slice(
+        0,
+        80
+      ) ||
+    "announcement-image";
+
+  return `${Date.now()}-${Math.round(
+    Math.random() *
+      1e9
+  )}-${cleanName}${extension}`;
 }
 
 /* =====================================================
-   SERIALIZE POST
+   SERIALIZE ANNOUNCEMENT
 
-   Adds a full image URL so React can
-   directly display the uploaded image.
+   We NEVER return the raw MongoDB
+   image buffer in normal JSON.
+
+   Instead, React receives:
+
+   image:
+   /api/announcements/:id/image
 ===================================================== */
 
 function serializeAnnouncement(
@@ -194,13 +158,53 @@ function serializeAnnouncement(
   announcement
 ) {
   const item =
-    typeof announcement.toObject ===
+    typeof announcement
+      ?.toObject ===
     "function"
       ? announcement.toObject()
-      : announcement;
+      : {
+          ...announcement,
+        };
+
+  /*
+    Remove the binary image from
+    normal JSON responses.
+  */
+
+  let safeImageFile =
+    null;
+
+  if (
+    item.imageFile
+  ) {
+    const {
+      data,
+      ...metadata
+    } =
+      item.imageFile;
+
+    safeImageFile =
+      metadata;
+  }
+
+  const hasImage =
+    Boolean(
+      item.imageFile
+        ?.data &&
+        item.imageFile
+          ?.size >
+          0
+    ) ||
+    Boolean(
+      item.imageFile
+        ?.fileName &&
+        item.imageFile
+          ?.size >
+          0
+    );
 
   const image =
-    item.imageFile?.fileName
+    hasImage
       ? `${req.protocol}://${req.get(
           "host"
         )}/api/announcements/${item._id}/image`
@@ -209,8 +213,12 @@ function serializeAnnouncement(
   return {
     ...item,
 
+    imageFile:
+      safeImageFile,
+
     /*
-      StudentHome can use this.
+      Frontend can display this
+      directly in an <img>.
     */
 
     image,
@@ -228,40 +236,62 @@ function serializeAnnouncement(
 }
 
 /* =====================================================
-   PUBLIC — APPROVED POSTS ONLY
+   PUBLIC
+   APPROVED POSTS ONLY
 
    GET /api/announcements
-
-   Student homepage uses this route.
 ===================================================== */
 
 router.get(
   "/",
-  async (req, res) => {
+
+  async (
+    req,
+    res
+  ) => {
     try {
       const announcements =
         await Announcement.find({
-          status: "approved",
+          status:
+            "approved",
         })
+          /*
+            Do not load large image
+            buffers for the post list.
+          */
+
+          .select(
+            "-imageFile.data"
+          )
+
           .populate(
             "organization",
+
             "organizationName acronym color"
           )
+
           .sort({
-            publishedAt: -1,
-            createdAt: -1,
+            publishedAt:
+              -1,
+
+            createdAt:
+              -1,
           });
 
       return res.json(
         announcements.map(
-          (announcement) =>
+          (
+            announcement
+          ) =>
             serializeAnnouncement(
               req,
               announcement
             )
         )
       );
-    } catch (error) {
+    } catch (
+      error
+    ) {
       console.error(
         "Public announcements error:",
         error
@@ -278,41 +308,63 @@ router.get(
 );
 
 /* =====================================================
-   ADMIN — ALL POSTS
+   ADMIN
+   ALL POSTS
 
    GET /api/announcements/admin
 ===================================================== */
 
 router.get(
   "/admin",
+
   protect,
-  authorize("admin"),
-  async (req, res) => {
+
+  authorize(
+    "admin"
+  ),
+
+  async (
+    req,
+    res
+  ) => {
     try {
       const announcements =
         await Announcement.find()
+          .select(
+            "-imageFile.data"
+          )
+
           .populate(
             "organization",
+
             "organizationName acronym color email"
           )
+
           .populate(
             "reviewedBy",
+
             "username"
           )
+
           .sort({
-            createdAt: -1,
+            createdAt:
+              -1,
           });
 
       return res.json(
         announcements.map(
-          (announcement) =>
+          (
+            announcement
+          ) =>
             serializeAnnouncement(
               req,
               announcement
             )
         )
       );
-    } catch (error) {
+    } catch (
+      error
+    ) {
       console.error(
         "Admin announcements error:",
         error
@@ -329,42 +381,73 @@ router.get(
 );
 
 /* =====================================================
-   ORGANIZATION — OWN SUBMISSIONS
+   ORGANIZATION
+   OWN SUBMISSIONS
 
    GET /api/announcements/my
 ===================================================== */
 
 router.get(
   "/my",
+
   protect,
+
   authorize(
     "organization"
   ),
-  async (req, res) => {
+
+  async (
+    req,
+    res
+  ) => {
     try {
+      if (
+        !req.user
+          .organization
+      ) {
+        return res
+          .status(400)
+          .json({
+            message:
+              "Your account is not linked to an organization.",
+          });
+      }
+
       const announcements =
         await Announcement.find({
           organization:
-            req.user.organization,
+            req.user
+              .organization,
         })
+          .select(
+            "-imageFile.data"
+          )
+
           .populate(
             "organization",
+
             "organizationName acronym color"
           )
+
           .sort({
-            createdAt: -1,
+            createdAt:
+              -1,
           });
 
       return res.json(
         announcements.map(
-          (announcement) =>
+          (
+            announcement
+          ) =>
             serializeAnnouncement(
               req,
               announcement
             )
         )
       );
-    } catch (error) {
+    } catch (
+      error
+    ) {
       console.error(
         "Organization posts error:",
         error
@@ -384,11 +467,18 @@ router.get(
    IMAGE
 
    GET /api/announcements/:id/image
+
+   Reads the image directly from
+   MongoDB instead of Vercel disk.
 ===================================================== */
 
 router.get(
   "/:id/image",
-  async (req, res) => {
+
+  async (
+    req,
+    res
+  ) => {
     try {
       const announcement =
         await Announcement.findById(
@@ -401,7 +491,6 @@ router.get(
         !announcement ||
         !announcement
           .imageFile
-          ?.fileName
       ) {
         return res
           .status(404)
@@ -411,39 +500,60 @@ router.get(
           });
       }
 
-      const filePath =
-        path.join(
-          uploadDirectory,
-          announcement
-            .imageFile
-            .fileName
-        );
+      const imageData =
+        announcement
+          .imageFile
+          .data;
 
       if (
-        !fs.existsSync(
-          filePath
-        )
+        !imageData ||
+        imageData.length ===
+          0
       ) {
         return res
           .status(404)
           .json({
             message:
-              "Image file not found.",
+              "Image data not found.",
           });
       }
 
-      res.setHeader(
-        "Content-Type",
+      const mimeType =
         announcement
           .imageFile
           .mimeType ||
-          "application/octet-stream"
+        "application/octet-stream";
+
+      const imageBuffer =
+        Buffer.from(
+          imageData
+        );
+
+      res.setHeader(
+        "Content-Type",
+        mimeType
       );
 
-      return res.sendFile(
-        filePath
+      res.setHeader(
+        "Content-Length",
+        imageBuffer.length
       );
-    } catch (error) {
+
+      /*
+        Cache image for one hour.
+      */
+
+      res.setHeader(
+        "Cache-Control",
+        "public, max-age=3600"
+      );
+
+      return res.end(
+        imageBuffer
+      );
+    } catch (
+      error
+    ) {
       console.error(
         "Announcement image error:",
         error
@@ -460,40 +570,48 @@ router.get(
 );
 
 /* =====================================================
-   ORGANIZATION — SUBMIT POST
+   ORGANIZATION
+   SUBMIT POST
 
    POST /api/announcements
 
-   Status is ALWAYS pending.
+   Status is always pending.
 ===================================================== */
 
 router.post(
   "/",
+
   protect,
+
   authorize(
     "organization"
   ),
-  upload.single("image"),
-  async (req, res) => {
+
+  upload.single(
+    "image"
+  ),
+
+  async (
+    req,
+    res
+  ) => {
     try {
       const {
         type,
         title,
         content,
         eventDate,
-      } = req.body;
+      } =
+        req.body;
 
-      /* =====================================
+      /* ===============================================
          ORGANIZATION LINK
-      ====================================== */
+      =============================================== */
 
       if (
-        !req.user.organization
+        !req.user
+          .organization
       ) {
-        removeUploadedFile(
-          req.file
-        );
-
         return res
           .status(400)
           .json({
@@ -502,19 +620,43 @@ router.post(
           });
       }
 
-      /* =====================================
+      /* ===============================================
+         NORMALIZE VALUES
+      =============================================== */
+
+      const cleanType =
+        String(
+          type ||
+            ""
+        ).trim();
+
+      const cleanTitle =
+        String(
+          title ||
+            ""
+        ).trim();
+
+      const cleanContent =
+        String(
+          content ||
+            ""
+        ).trim();
+
+      const cleanEventDate =
+        String(
+          eventDate ||
+            ""
+        ).trim();
+
+      /* ===============================================
          REQUIRED
-      ====================================== */
+      =============================================== */
 
       if (
-        !type ||
-        !title?.trim() ||
-        !content?.trim()
+        !cleanType ||
+        !cleanTitle ||
+        !cleanContent
       ) {
-        removeUploadedFile(
-          req.file
-        );
-
         return res
           .status(400)
           .json({
@@ -523,16 +665,18 @@ router.post(
           });
       }
 
+      /* ===============================================
+         TYPE
+      =============================================== */
+
       if (
         ![
           "Announcement",
           "News",
-        ].includes(type)
+        ].includes(
+          cleanType
+        )
       ) {
-        removeUploadedFile(
-          req.file
-        );
-
         return res
           .status(400)
           .json({
@@ -541,79 +685,212 @@ router.post(
           });
       }
 
-      /* =====================================
-         IMAGE INFO
-      ====================================== */
+      /* ===============================================
+         TITLE VALIDATION
+      =============================================== */
+
+      if (
+        cleanTitle.length <
+        3
+      ) {
+        return res
+          .status(400)
+          .json({
+            message:
+              "Title must contain at least 3 characters.",
+          });
+      }
+
+      if (
+        cleanTitle.length >
+        150
+      ) {
+        return res
+          .status(400)
+          .json({
+            message:
+              "Title must not exceed 150 characters.",
+          });
+      }
+
+      /* ===============================================
+         CONTENT VALIDATION
+      =============================================== */
+
+      if (
+        cleanContent.length <
+        5
+      ) {
+        return res
+          .status(400)
+          .json({
+            message:
+              "Content must contain at least 5 characters.",
+          });
+      }
+
+      if (
+        cleanContent.length >
+        5000
+      ) {
+        return res
+          .status(400)
+          .json({
+            message:
+              "Content must not exceed 5000 characters.",
+          });
+      }
+
+      /* ===============================================
+         EVENT DATE VALIDATION
+
+         Optional, but if supplied it
+         must use YYYY-MM-DD.
+      =============================================== */
+
+      if (
+        cleanEventDate &&
+        !/^\d{4}-\d{2}-\d{2}$/.test(
+          cleanEventDate
+        )
+      ) {
+        return res
+          .status(400)
+          .json({
+            message:
+              "Invalid event date.",
+          });
+      }
+
+      /* ===============================================
+         IMAGE
+
+         req.file.buffer comes from
+         multer.memoryStorage().
+      =============================================== */
 
       let imageFile =
         null;
 
-      if (req.file) {
+      if (
+        req.file
+      ) {
+        if (
+          !req.file
+            .buffer ||
+          req.file
+            .buffer
+            .length ===
+            0
+        ) {
+          return res
+            .status(400)
+            .json({
+              message:
+                "The uploaded image is empty.",
+            });
+        }
+
         imageFile = {
           originalName:
             req.file
               .originalname,
 
           fileName:
-            req.file.filename,
+            createImageFileName(
+              req.file
+            ),
 
           mimeType:
-            req.file.mimetype,
+            req.file
+              .mimetype,
 
           size:
-            req.file.size,
+            req.file
+              .size,
+
+          /*
+            Actual image bytes.
+          */
+
+          data:
+            req.file
+              .buffer,
         };
       }
 
-      /* =====================================
+      /* ===============================================
          CREATE PENDING POST
-      ====================================== */
+      =============================================== */
 
       const announcement =
         await Announcement.create({
           organization:
-            req.user.organization,
+            req.user
+              .organization,
 
           createdBy:
-            req.user._id ||
-            req.user.id ||
+            req.user
+              ._id ||
+            req.user
+              .id ||
             null,
 
-          type,
+          type:
+            cleanType,
 
           title:
-            title.trim(),
+            cleanTitle,
 
           content:
-            content.trim(),
+            cleanContent,
 
           eventDate:
-            eventDate ||
-            "",
+            cleanEventDate,
 
           imageFile,
 
           status:
             "pending",
 
-          adminRemarks: "",
+          adminRemarks:
+            "",
 
-          reviewedAt: null,
+          reviewedBy:
+            null,
 
-          publishedAt: null,
+          reviewedAt:
+            null,
+
+          publishedAt:
+            null,
         });
+
+      /*
+        Re-read without the image
+        bytes before sending JSON.
+      */
 
       const populated =
         await Announcement.findById(
           announcement._id
-        ).populate(
-          "organization",
-          "organizationName acronym color"
-        );
+        )
+          .select(
+            "-imageFile.data"
+          )
+
+          .populate(
+            "organization",
+
+            "organizationName acronym color"
+          );
 
       return res
         .status(201)
         .json({
+          success:
+            true,
+
           message:
             "Post submitted successfully. It is now waiting for Administrator review.",
 
@@ -623,20 +900,35 @@ router.post(
               populated
             ),
         });
-    } catch (error) {
-      removeUploadedFile(
-        req.file
-      );
-
+    } catch (
+      error
+    ) {
       console.error(
         "Create announcement error:",
         error
       );
 
+      /*
+        MongoDB document limit.
+      */
+
+      if (
+        error?.code ===
+        10334
+      ) {
+        return res
+          .status(400)
+          .json({
+            message:
+              "The announcement is too large. Please upload a smaller image.",
+          });
+      }
+
       return res
         .status(500)
         .json({
           message:
+            error.message ||
             "Unable to submit post.",
         });
     }
@@ -644,20 +936,30 @@ router.post(
 );
 
 /* =====================================================
-   ADMIN — APPROVE / REJECT
+   ADMIN
+   APPROVE / REJECT
 
    PATCH /api/announcements/:id/status
 ===================================================== */
 
 router.patch(
   "/:id/status",
+
   protect,
-  authorize("admin"),
-  async (req, res) => {
+
+  authorize(
+    "admin"
+  ),
+
+  async (
+    req,
+    res
+  ) => {
     try {
       const status =
         String(
-          req.body.status ||
+          req.body
+            .status ||
             ""
         )
           .trim()
@@ -670,11 +972,17 @@ router.patch(
             ""
         ).trim();
 
+      /* ===============================================
+         STATUS VALIDATION
+      =============================================== */
+
       if (
         ![
           "approved",
           "rejected",
-        ].includes(status)
+        ].includes(
+          status
+        )
       ) {
         return res
           .status(400)
@@ -684,10 +992,9 @@ router.patch(
           });
       }
 
-      /*
-        A rejection should explain
-        why it was rejected.
-      */
+      /* ===============================================
+         REJECTION REASON
+      =============================================== */
 
       if (
         status ===
@@ -702,12 +1009,18 @@ router.patch(
           });
       }
 
+      /* ===============================================
+         FIND ANNOUNCEMENT
+      =============================================== */
+
       const announcement =
         await Announcement.findById(
           req.params.id
         );
 
-      if (!announcement) {
+      if (
+        !announcement
+      ) {
         return res
           .status(404)
           .json({
@@ -715,6 +1028,10 @@ router.patch(
               "Post not found.",
           });
       }
+
+      /* ===============================================
+         UPDATE
+      =============================================== */
 
       announcement.status =
         status;
@@ -731,28 +1048,46 @@ router.patch(
         new Date();
 
       announcement.publishedAt =
-        status === "approved"
+        status ===
+        "approved"
           ? new Date()
           : null;
 
       await announcement.save();
 
+      /* ===============================================
+         POPULATE RESULT
+
+         Exclude large image buffer.
+      =============================================== */
+
       const populated =
         await Announcement.findById(
           announcement._id
         )
+          .select(
+            "-imageFile.data"
+          )
+
           .populate(
             "organization",
+
             "organizationName acronym color email"
           )
+
           .populate(
             "reviewedBy",
+
             "username"
           );
 
       return res.json({
+        success:
+          true,
+
         message:
-          status === "approved"
+          status ===
+          "approved"
             ? "Post approved successfully. It is now visible on the Student Homepage."
             : "Post rejected successfully.",
 
@@ -762,7 +1097,9 @@ router.patch(
             populated
           ),
       });
-    } catch (error) {
+    } catch (
+      error
+    ) {
       console.error(
         "Announcement review error:",
         error
@@ -779,7 +1116,7 @@ router.patch(
 );
 
 /* =====================================================
-   MULTER ERRORS
+   MULTER / UPLOAD ERRORS
 ===================================================== */
 
 router.use(
@@ -789,10 +1126,6 @@ router.use(
     res,
     next
   ) => {
-    removeUploadedFile(
-      req.file
-    );
-
     if (
       error instanceof
       multer.MulterError
@@ -817,17 +1150,24 @@ router.use(
         });
     }
 
-    if (error) {
+    if (
+      error
+    ) {
       return res
         .status(400)
         .json({
           message:
-            error.message,
+            error.message ||
+            "Unable to upload image.",
         });
     }
 
     next();
   }
 );
+
+/* =====================================================
+   EXPORT
+===================================================== */
 
 export default router;

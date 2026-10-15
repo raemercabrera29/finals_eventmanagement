@@ -1,5 +1,9 @@
 import mongoose from "mongoose";
 
+/* =====================================================
+   BOOKING DOCUMENT
+===================================================== */
+
 const bookingDocumentSchema =
   new mongoose.Schema(
     {
@@ -8,6 +12,12 @@ const bookingDocumentSchema =
         required: true,
       },
 
+      /*
+        Metadata only.
+
+        No physical file is written
+        to the Vercel filesystem.
+      */
       fileName: {
         type: String,
         required: true,
@@ -22,11 +32,30 @@ const bookingDocumentSchema =
         type: Number,
         default: 0,
       },
+
+      /*
+        Actual PDF bytes.
+
+        Stored directly inside MongoDB.
+
+        select:false prevents the large
+        binary data from being included
+        in normal booking API responses.
+      */
+      data: {
+        type: Buffer,
+        default: null,
+        select: false,
+      },
     },
     {
       _id: false,
     }
   );
+
+/* =====================================================
+   BOOKING
+===================================================== */
 
 const bookingSchema =
   new mongoose.Schema(
@@ -88,6 +117,8 @@ const bookingSchema =
       participants: {
         type: Number,
         default: 0,
+        min: 0,
+        max: 150,
       },
 
       request: {
@@ -96,9 +127,9 @@ const bookingSchema =
         trim: true,
       },
 
-      /* ===============================
+      /* =================================================
          REQUIRED DOCUMENTS
-      =============================== */
+      ================================================= */
 
       projectProposalFile: {
         type:
@@ -114,6 +145,10 @@ const bookingSchema =
         required: true,
       },
 
+      /* =================================================
+         STATUS
+      ================================================= */
+
       status: {
         type: String,
 
@@ -124,7 +159,8 @@ const bookingSchema =
           "cancelled",
         ],
 
-        default: "pending",
+        default:
+          "pending",
       },
 
       adminRemarks: {
@@ -133,27 +169,41 @@ const bookingSchema =
       },
     },
     {
-      timestamps: true,
+      timestamps:
+        true,
     }
   );
 
+/* =====================================================
+   BOOKING REFERENCE
+===================================================== */
+
 bookingSchema.pre(
   "validate",
+
   function (next) {
-    if (!this.bookingReference) {
+    if (
+      !this.bookingReference
+    ) {
       this.bookingReference =
         `NU-${Date.now()
           .toString()
-          .slice(-8)}-${Math.floor(
-            Math.random() *
-              900 +
-              100
-          )}`;
+          .slice(
+            -8
+          )}-${Math.floor(
+          Math.random() *
+            900 +
+            100
+        )}`;
     }
 
     next();
   }
 );
+
+/* =====================================================
+   MODEL
+===================================================== */
 
 export default mongoose.model(
   "Booking",

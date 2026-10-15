@@ -1,11 +1,5 @@
 import express from "express";
 import multer from "multer";
-import fs from "fs";
-import path from "path";
-
-import {
-  fileURLToPath,
-} from "url";
 
 import Booking from "../models/Booking.js";
 
@@ -27,222 +21,139 @@ const PREPARATION_BUFFER_MINUTES =
 const MAX_FILE_SIZE =
   5 * 1024 * 1024;
 
-/*
-  HARD MAXIMUM PARTICIPANTS
-*/
-
 const MAX_PARTICIPANTS =
   150;
 
 /* =====================================================
-   FILE PATH
-===================================================== */
+   PDF SIGNATURE
 
-const __filename =
-  fileURLToPath(
-    import.meta.url
-  );
+   Real PDF files begin with:
 
-const __dirname =
-  path.dirname(
-    __filename
-  );
+   %PDF-
 
-const uploadDirectory =
-  path.join(
-    __dirname,
-    "..",
-    "uploads",
-    "booking-documents"
-  );
-
-if (
-  !fs.existsSync(
-    uploadDirectory
-  )
-) {
-  fs.mkdirSync(
-    uploadDirectory,
-
-    {
-      recursive:
-        true,
-    }
-  );
-}
-
-/* =====================================================
-   CLEAN UP FILES
-===================================================== */
-
-function cleanupFiles(
-  files
-) {
-  if (
-    !files
-  ) {
-    return;
-  }
-
-  const uploadedFiles =
-    Object.values(
-      files
-    )
-      .flat()
-      .filter(
-        Boolean
-      );
-
-  for (
-    const file
-    of uploadedFiles
-  ) {
-    try {
-      if (
-        file?.path &&
-        fs.existsSync(
-          file.path
-        )
-      ) {
-        fs.unlinkSync(
-          file.path
-        );
-      }
-    } catch (
-      error
-    ) {
-      console.error(
-        "Unable to clean uploaded file:",
-        error
-      );
-    }
-  }
-}
-
-/* =====================================================
-   VERIFY PDF SIGNATURE
+   Because we now use memoryStorage,
+   validation reads req.file.buffer
+   instead of a physical file path.
 ===================================================== */
 
 function hasPdfSignature(
-  filePath
+  file
 ) {
-  let descriptor =
-    null;
+  if (
+    !file?.buffer ||
+    file.buffer.length <
+      5
+  ) {
+    return false;
+  }
 
-  try {
-    descriptor =
-      fs.openSync(
-        filePath,
-        "r"
-      );
-
-    const buffer =
-      Buffer.alloc(
+  return (
+    file.buffer
+      .subarray(
+        0,
         5
-      );
-
-    fs.readSync(
-      descriptor,
-      buffer,
-      0,
-      5,
-      0
-    );
-
-    return (
-      buffer.toString(
+      )
+      .toString(
         "utf8"
       ) ===
-      "%PDF-"
-    );
-  } catch (
-    error
-  ) {
-    console.error(
-      "PDF validation error:",
-      error
-    );
-
-    return false;
-  } finally {
-    if (
-      descriptor !==
-      null
-    ) {
-      try {
-        fs.closeSync(
-          descriptor
-        );
-      } catch {
-        // Ignore close error
-      }
-    }
-  }
+    "%PDF-"
+  );
 }
 
 /* =====================================================
-   MULTER STORAGE
+   CREATE FILE NAME
+
+   This is metadata only.
+
+   There is NO physical file with
+   this name on Vercel.
+===================================================== */
+
+function createDocumentFileName(
+  file
+) {
+  const original =
+    String(
+      file?.originalname ||
+        "document.pdf"
+    );
+
+  const withoutExtension =
+    original.replace(
+      /\.pdf$/i,
+      ""
+    );
+
+  const safeName =
+    withoutExtension
+      .replace(
+        /[^a-zA-Z0-9-_]/g,
+        "-"
+      )
+      .replace(
+        /-+/g,
+        "-"
+      )
+      .replace(
+        /^-+|-+$/g,
+        ""
+      )
+      .slice(
+        0,
+        80
+      ) ||
+    "document";
+
+  return `${Date.now()}-${Math.round(
+    Math.random() *
+      1e9
+  )}-${safeName}.pdf`;
+}
+
+/* =====================================================
+   CREATE DOCUMENT OBJECT
+===================================================== */
+
+function createDocumentObject(
+  file
+) {
+  return {
+    originalName:
+      file.originalname,
+
+    fileName:
+      createDocumentFileName(
+        file
+      ),
+
+    mimeType:
+      file.mimetype,
+
+    size:
+      file.size,
+
+    /*
+      Actual PDF content.
+    */
+    data:
+      file.buffer,
+  };
+}
+
+/* =====================================================
+   MULTER MEMORY STORAGE
+
+   IMPORTANT:
+
+   Do NOT use multer.diskStorage()
+   on Vercel.
+
+   Vercel's deployed application
+   directory is read-only.
 ===================================================== */
 
 const storage =
-  multer.diskStorage({
-    destination(
-      req,
-      file,
-      callback
-    ) {
-      callback(
-        null,
-        uploadDirectory
-      );
-    },
-
-    filename(
-      req,
-      file,
-      callback
-    ) {
-      const extension =
-        path
-          .extname(
-            file.originalname
-          )
-          .toLowerCase();
-
-      const rawName =
-        path.basename(
-          file.originalname,
-
-          path.extname(
-            file.originalname
-          )
-        );
-
-      const safeName =
-        rawName
-          .replace(
-            /[^a-zA-Z0-9-_]/g,
-            "-"
-          )
-          .replace(
-            /-+/g,
-            "-"
-          )
-          .slice(
-            0,
-            80
-          );
-
-      callback(
-        null,
-
-        `${Date.now()}-${Math.round(
-          Math.random() *
-          1e9
-        )}-${safeName}${extension}`
-      );
-    },
-  });
+  multer.memoryStorage();
 
 /* =====================================================
    PDF UPLOAD
@@ -262,21 +173,24 @@ const upload =
       file,
       callback
     ) {
-      const extension =
-        path
-          .extname(
-            file.originalname
-          )
-          .toLowerCase();
+      const originalName =
+        String(
+          file.originalname ||
+            ""
+        ).toLowerCase();
 
-      const valid =
+      const hasPdfExtension =
+        originalName.endsWith(
+          ".pdf"
+        );
+
+      const hasPdfMime =
         file.mimetype ===
-          "application/pdf" &&
-        extension ===
-          ".pdf";
+        "application/pdf";
 
       if (
-        !valid
+        !hasPdfExtension ||
+        !hasPdfMime
       ) {
         return callback(
           new Error(
@@ -355,14 +269,10 @@ function timeToMinutes(
     !Number.isInteger(
       minutes
     ) ||
-    hours <
-      0 ||
-    hours >
-      23 ||
-    minutes <
-      0 ||
-    minutes >
-      59
+    hours < 0 ||
+    hours > 23 ||
+    minutes < 0 ||
+    minutes > 59
   ) {
     return null;
   }
@@ -424,12 +334,6 @@ function getDayRange(
 
 /* =====================================================
    VENUE NORMALIZATION
-
-   This also fixes:
-   MPH
-   Multipurpose Hall
-
-   being treated as different venues.
 ===================================================== */
 
 function normalizeVenue(
@@ -438,7 +342,7 @@ function normalizeVenue(
   const raw =
     String(
       value ||
-      ""
+        ""
     ).trim();
 
   const venue =
@@ -613,18 +517,6 @@ async function findConflict({
     };
   }
 
-  /*
-    Check all aliases.
-
-    Example:
-
-    Multipurpose Hall
-    MPH
-
-    are treated as the
-    same venue.
-  */
-
   const query = {
     venue: {
       $in:
@@ -659,6 +551,7 @@ async function findConflict({
       query
     ).populate(
       "organization",
+
       "organizationName acronym color"
     );
 
@@ -785,10 +678,6 @@ router.get(
         status:
           "approved",
       };
-
-      /*
-        Optional venue filter.
-      */
 
       if (
         req.query
@@ -1081,6 +970,20 @@ router.get(
     res
   ) => {
     try {
+      if (
+        !req.user
+          .organization
+      ) {
+        return res
+          .status(
+            400
+          )
+          .json({
+            message:
+              "Your account is not linked to an organization.",
+          });
+      }
+
       const bookings =
         await Booking.find({
           organization:
@@ -1141,10 +1044,25 @@ router.post(
     req,
     res
   ) => {
-    let bookingSaved =
-      false;
-
     try {
+      /* ===============================================
+         ORGANIZATION
+      =============================================== */
+
+      if (
+        !req.user
+          .organization
+      ) {
+        return res
+          .status(
+            400
+          )
+          .json({
+            message:
+              "Your account is not linked to an organization.",
+          });
+      }
+
       /* ===============================================
          FILES
       =============================================== */
@@ -1166,10 +1084,6 @@ router.post(
       if (
         !proposal
       ) {
-        cleanupFiles(
-          req.files
-        );
-
         return res
           .status(
             400
@@ -1187,10 +1101,6 @@ router.post(
       if (
         !arf
       ) {
-        cleanupFiles(
-          req.files
-        );
-
         return res
           .status(
             400
@@ -1202,19 +1112,14 @@ router.post(
       }
 
       /* ===============================================
-         VERIFY PDF
+         VERIFY PROJECT PROPOSAL
       =============================================== */
 
       if (
         !hasPdfSignature(
           proposal
-            .path
         )
       ) {
-        cleanupFiles(
-          req.files
-        );
-
         return res
           .status(
             400
@@ -1225,16 +1130,15 @@ router.post(
           });
       }
 
+      /* ===============================================
+         VERIFY ARF
+      =============================================== */
+
       if (
         !hasPdfSignature(
           arf
-            .path
         )
       ) {
-        cleanupFiles(
-          req.files
-        );
-
         return res
           .status(
             400
@@ -1277,10 +1181,6 @@ router.post(
         !startTime ||
         !endTime
       ) {
-        cleanupFiles(
-          req.files
-        );
-
         return res
           .status(
             400
@@ -1292,7 +1192,7 @@ router.post(
       }
 
       /* ===============================================
-         DATE + TIME VALIDATION
+         DATE + TIME
       =============================================== */
 
       const validation =
@@ -1306,10 +1206,6 @@ router.post(
         !validation
           .valid
       ) {
-        cleanupFiles(
-          req.files
-        );
-
         return res
           .status(
             400
@@ -1336,17 +1232,15 @@ router.post(
             normalizedVenue,
 
           eventDate,
+
           startTime,
+
           endTime,
         });
 
       if (
         conflict
       ) {
-        cleanupFiles(
-          req.files
-        );
-
         return res
           .status(
             409
@@ -1358,8 +1252,7 @@ router.post(
       }
 
       /* ===============================================
-         PARTICIPANTS
-         HARD LIMIT: 0 - 150
+         PARTICIPANTS — HARD 150 MAX
       =============================================== */
 
       const participantCount =
@@ -1376,15 +1269,6 @@ router.post(
               participants
             );
 
-      /*
-        Reject:
-
-        - Negative numbers
-        - Decimals
-        - More than 150
-        - Invalid numbers
-      */
-
       if (
         !Number.isInteger(
           participantCount
@@ -1394,10 +1278,6 @@ router.post(
         participantCount >
           MAX_PARTICIPANTS
       ) {
-        cleanupFiles(
-          req.files
-        );
-
         return res
           .status(
             400
@@ -1410,6 +1290,9 @@ router.post(
 
       /* ===============================================
          CREATE BOOKING
+
+         PDF buffers are saved directly
+         into MongoDB.
       =============================================== */
 
       const booking =
@@ -1448,53 +1331,27 @@ router.post(
               ?.trim() ||
             "",
 
-          projectProposalFile: {
-            originalName:
+          projectProposalFile:
+            createDocumentObject(
               proposal
-                .originalname,
+            ),
 
-            fileName:
-              proposal
-                .filename,
-
-            mimeType:
-              proposal
-                .mimetype,
-
-            size:
-              proposal
-                .size,
-          },
-
-          approvedArfFile: {
-            originalName:
+          approvedArfFile:
+            createDocumentObject(
               arf
-                .originalname,
-
-            fileName:
-              arf
-                .filename,
-
-            mimeType:
-              arf
-                .mimetype,
-
-            size:
-              arf
-                .size,
-          },
+            ),
 
           status:
             "pending",
         });
 
-      bookingSaved =
-        true;
+      /* ===============================================
+         RETURN WITHOUT PDF BINARY
+      =============================================== */
 
       const populated =
         await Booking.findById(
-          booking
-            ._id
+          booking._id
         ).populate(
           "organization",
 
@@ -1511,18 +1368,32 @@ router.post(
     } catch (
       error
     ) {
-      if (
-        !bookingSaved
-      ) {
-        cleanupFiles(
-          req.files
-        );
-      }
-
       console.error(
         "Create booking error:",
         error
       );
+
+      /*
+        MongoDB BSON document maximum
+        is approximately 16 MB.
+
+        Two 5 MB PDFs fit normally,
+        but this gives a friendly error
+        if the document becomes too large.
+      */
+      if (
+        error?.code ===
+        10334
+      ) {
+        return res
+          .status(
+            400
+          )
+          .json({
+            message:
+              "The uploaded booking documents are too large. Please use smaller PDF files.",
+          });
+      }
 
       return res
         .status(
@@ -1530,6 +1401,7 @@ router.post(
         )
         .json({
           message:
+            error.message ||
             "Unable to submit booking.",
         });
     }
@@ -1739,8 +1611,7 @@ router.patch(
 
       const populated =
         await Booking.findById(
-          booking
-            ._id
+          booking._id
         ).populate(
           "organization",
 
@@ -1849,10 +1720,6 @@ router.patch(
         status ===
         "approved"
       ) {
-        /*
-          Proposal required.
-        */
-
         if (
           !booking
             .projectProposalFile
@@ -1868,10 +1735,6 @@ router.patch(
             });
         }
 
-        /*
-          ARF required.
-        */
-
         if (
           !booking
             .approvedArfFile
@@ -1886,11 +1749,6 @@ router.patch(
                 "Approved ARF PDF is missing.",
             });
         }
-
-        /*
-          Check against other
-          approved bookings.
-        */
 
         const conflict =
           await findConflict({
@@ -1951,8 +1809,7 @@ router.patch(
 
       const populated =
         await Booking.findById(
-          booking
-            ._id
+          booking._id
         ).populate(
           "organization",
 
@@ -1993,10 +1850,6 @@ router.use(
     res,
     next
   ) => {
-    cleanupFiles(
-      req.files
-    );
-
     console.error(
       "Booking upload error:",
       error
@@ -2039,7 +1892,8 @@ router.use(
         )
         .json({
           message:
-            error.message,
+            error.message ||
+            "Unable to upload booking documents.",
         });
     }
 

@@ -16,9 +16,16 @@ import api from "../../api/axiosClient.js";
 
 function MaterialIcon({
   name,
+  className = "",
 }) {
   return (
-    <span className="material-symbols-rounded">
+    <span
+      className={`
+        material-symbols-rounded
+        leading-none
+        ${className}
+      `}
+    >
       {name}
     </span>
   );
@@ -124,6 +131,27 @@ function getOrganizationName(
 }
 
 /* =====================================================
+   ORGANIZATION ACRONYM
+===================================================== */
+
+function getOrganizationAcronym(
+  organization
+) {
+  if (
+    !organization ||
+    typeof organization !==
+      "object"
+  ) {
+    return "";
+  }
+
+  return (
+    organization.acronym ||
+    ""
+  );
+}
+
+/* =====================================================
    ORGANIZATION COLOR
 ===================================================== */
 
@@ -169,19 +197,12 @@ function createDescription(
 }
 
 /* =====================================================
-   FILTER CATEGORY
+   NORMALIZE POST TYPE
 ===================================================== */
 
 function getPostCategory(
   post
 ) {
-  if (
-    post?.source ===
-    "event"
-  ) {
-    return "event";
-  }
-
   const type =
     String(
       post?.type || ""
@@ -205,13 +226,6 @@ function getPostCategory(
 function getDisplayType(
   post
 ) {
-  if (
-    post?.source ===
-    "event"
-  ) {
-    return "Event";
-  }
-
   return (
     post?.type ||
     "Announcement"
@@ -285,7 +299,7 @@ export default function StudentHome() {
     3;
 
   /* ===================================================
-     LOAD POSTS
+     LOAD ANNOUNCEMENTS / NEWS ONLY
   =================================================== */
 
   const loadPosts =
@@ -295,52 +309,23 @@ export default function StudentHome() {
       setError("");
 
       try {
-        const results =
-          await Promise.allSettled(
-            [
-              api.get(
-                "/announcements"
-              ),
-
-              api.get(
-                "/events"
-              ),
-            ]
+        const response =
+          await api.get(
+            "/announcements"
           );
 
-        const announcementResponse =
-          results[0];
-
-        const eventResponse =
-          results[1];
-
         const announcements =
-          announcementResponse.status ===
-          "fulfilled"
-            ? Array.isArray(
-                announcementResponse
-                  .value.data
+          Array.isArray(
+            response.data
+          )
+            ? response.data
+            : Array.isArray(
+                response.data
+                  ?.announcements
               )
-              ? announcementResponse
-                  .value.data
-              : []
-            : [];
-
-        const events =
-          eventResponse.status ===
-          "fulfilled"
-            ? Array.isArray(
-                eventResponse
-                  .value.data
-              )
-              ? eventResponse
-                  .value.data
-              : []
-            : [];
-
-        /* =============================================
-           ANNOUNCEMENTS / NEWS
-        ============================================= */
+              ? response.data
+                  .announcements
+              : [];
 
         const announcementPosts =
           announcements.map(
@@ -383,12 +368,9 @@ export default function StudentHome() {
                   ),
 
                 acronym:
-                  typeof organization ===
-                  "object"
-                    ? organization
-                        ?.acronym ||
-                      ""
-                    : "",
+                  getOrganizationAcronym(
+                    organization
+                  ),
 
                 type:
                   announcement.type ||
@@ -403,6 +385,8 @@ export default function StudentHome() {
 
                 image:
                   announcement.image ||
+                  announcement.imageUrl ||
+                  announcement.imageFile?.url ||
                   null,
 
                 description:
@@ -411,123 +395,16 @@ export default function StudentHome() {
                   ),
 
                 content,
-
-                venue: "",
-
-                time: "",
               };
             }
           );
 
         /* =============================================
-           EVENTS
+           SORT NEWEST FIRST
         ============================================= */
 
-        const eventPosts =
-          events.map(
-            (
-              event
-            ) => {
-              const organization =
-                event.organization;
-
-              const content =
-                event.description ||
-                event.content ||
-                "";
-
-              const dateRaw =
-                event.eventDate ||
-                event.date ||
-                event.createdAt;
-
-              let time =
-                "";
-
-              if (
-                event.startTime &&
-                event.endTime
-              ) {
-                time =
-                  `${event.startTime} - ${event.endTime}`;
-              } else {
-                time =
-                  event.time ||
-                  "";
-              }
-
-              return {
-                id:
-                  event._id,
-
-                source:
-                  "event",
-
-                title:
-                  event.eventName ||
-                  event.title ||
-                  "Campus Event",
-
-                organization:
-                  getOrganizationName(
-                    organization
-                  ),
-
-                organizationColor:
-                  getOrganizationColor(
-                    organization
-                  ),
-
-                acronym:
-                  typeof organization ===
-                  "object"
-                    ? organization
-                        ?.acronym ||
-                      ""
-                    : "",
-
-                type:
-                  event.eventType ||
-                  event.type ||
-                  "Event",
-
-                dateRaw,
-
-                date:
-                  formatDate(
-                    dateRaw
-                  ),
-
-                image:
-                  event.image ||
-                  event.imageUrl ||
-                  null,
-
-                description:
-                  createDescription(
-                    content
-                  ),
-
-                content,
-
-                venue:
-                  event.venue ||
-                  "",
-
-                time,
-              };
-            }
-          );
-
-        /* =============================================
-           COMBINE
-        ============================================= */
-
-        const combined =
-          [
-            ...announcementPosts,
-            ...eventPosts,
-          ].sort(
+        const sortedPosts =
+          announcementPosts.sort(
             (
               a,
               b
@@ -552,18 +429,24 @@ export default function StudentHome() {
           );
 
         setPosts(
-          combined
+          sortedPosts
         );
       } catch (
         err
       ) {
         console.error(
-          "Student home error:",
+          "STUDENT HOME ERROR:",
           err
         );
 
         setError(
-          "Unable to load campus posts."
+          err.response?.data
+            ?.message ||
+            "Unable to load campus posts."
+        );
+
+        setPosts(
+          []
         );
       } finally {
         setLoading(
@@ -607,19 +490,10 @@ export default function StudentHome() {
               ) ===
               "announcement"
           ).length,
-
-        event:
-          posts.filter(
-            (
-              post
-            ) =>
-              getPostCategory(
-                post
-              ) ===
-              "event"
-          ).length,
       }),
-      [posts]
+      [
+        posts,
+      ]
     );
 
   /* ===================================================
@@ -661,6 +535,7 @@ export default function StudentHome() {
             post.title,
             post.type,
             post.description,
+            post.content,
           ].some(
             (
               field
@@ -684,6 +559,8 @@ export default function StudentHome() {
 
   /* ===================================================
      FILTER BUTTONS
+
+     EVENTS REMOVED
   =================================================== */
 
   const filterButtons =
@@ -728,20 +605,6 @@ export default function StudentHome() {
 
         count:
           counts.announcement,
-      },
-
-      {
-        key:
-          "event",
-
-        label:
-          "Events",
-
-        icon:
-          "event",
-
-        count:
-          counts.event,
       },
     ];
 
@@ -846,7 +709,7 @@ export default function StudentHome() {
     };
 
   /* ===================================================
-     SET FILTER
+     SELECT FILTER
   =================================================== */
 
   const selectFilter =
@@ -856,16 +719,25 @@ export default function StudentHome() {
       setTypeFilter(
         filter
       );
+
+      setCurrentPage(
+        1
+      );
+
+      setVisibleCount(
+        initialVisibleCount
+      );
     };
 
   /* =====================================================
-     UI
+     PAGE
   ===================================================== */
 
   return (
     <div
       className="
         min-h-screen
+
         bg-[#f4f5f7]
       "
     >
@@ -905,6 +777,7 @@ export default function StudentHome() {
               font-black
               uppercase
               tracking-[0.2em]
+
               text-yellow-300
             "
           >
@@ -937,17 +810,15 @@ export default function StudentHome() {
             "
           >
             Discover the latest
-            updates, activities,
-            announcements, news,
-            and events from
-            different NU
+            announcements and news
+            from different NU
             organizations.
           </p>
         </div>
       </section>
 
       {/* =================================================
-          CONTENT
+          MAIN CONTENT
       ================================================= */}
 
       <main
@@ -990,9 +861,10 @@ export default function StudentHome() {
               text-blue-950
             "
           >
-            Search Campus
-            Posts
+            Search Campus Posts
           </label>
+
+          {/* SEARCH */}
 
           <div
             className="
@@ -1009,7 +881,13 @@ export default function StudentHome() {
               px-4
             "
           >
-            <MaterialIcon name="search" />
+            <MaterialIcon
+              name="search"
+              className="
+                text-[21px]
+                text-blue-950
+              "
+            />
 
             <input
               value={
@@ -1019,12 +897,11 @@ export default function StudentHome() {
                 event
               ) =>
                 setSearch(
-                  event
-                    .target
+                  event.target
                     .value
                 )
               }
-              placeholder="Search organization, title, type, or event..."
+              placeholder="Search organization, title, announcement, or news..."
               className="
                 w-full
 
@@ -1058,16 +935,20 @@ export default function StudentHome() {
 
                   text-gray-500
 
+                  transition
+
                   hover:bg-white
                 "
               >
-                <MaterialIcon name="close" />
+                <MaterialIcon
+                  name="close"
+                />
               </button>
             )}
           </div>
 
           {/* =============================================
-              CLICKABLE CONTENT TYPE FILTERS
+              FILTER BUTTONS
           ============================================= */}
 
           <div
@@ -1113,7 +994,7 @@ export default function StudentHome() {
                       text-xs
                       font-black
 
-                      transition-colors
+                      transition-all
                       duration-200
 
                       ${
@@ -1122,6 +1003,7 @@ export default function StudentHome() {
                             border-blue-950
                             bg-blue-950
                             text-white
+
                             shadow-md
                           `
                           : `
@@ -1140,16 +1022,22 @@ export default function StudentHome() {
                       name={
                         item.icon
                       }
+                      className="
+                        text-[17px]
+                      "
                     />
 
-                    {
-                      item.label
-                    }
+                    <span>
+                      {
+                        item.label
+                      }
+                    </span>
 
                     <span
                       className={`
                         flex
                         min-w-5
+
                         items-center
                         justify-center
 
@@ -1225,7 +1113,14 @@ export default function StudentHome() {
                 text-yellow-400
               "
             >
-              <MaterialIcon name="hourglass_top" />
+              <MaterialIcon
+                name="progress_activity"
+                className="
+                  animate-spin
+
+                  text-[24px]
+                "
+              />
             </div>
 
             <p
@@ -1271,21 +1166,62 @@ export default function StudentHome() {
                   gap-3
                 "
               >
-                <MaterialIcon name="error" />
+                <MaterialIcon
+                  name="error"
+                />
 
-                <div>
-                  <p className="font-black">
-                    Unable to
-                    load posts
+                <div
+                  className="
+                    flex-1
+                  "
+                >
+                  <p
+                    className="
+                      font-black
+                    "
+                  >
+                    Unable to load
+                    posts
                   </p>
 
-                  <p className="mt-1 text-sm">
+                  <p
+                    className="
+                      mt-1
+                      text-sm
+                    "
+                  >
                     {error}
                   </p>
                 </div>
+
+                <button
+                  type="button"
+                  onClick={
+                    loadPosts
+                  }
+                  className="
+                    rounded-xl
+
+                    bg-red-100
+
+                    px-4
+                    py-2
+
+                    text-xs
+                    font-black
+
+                    hover:bg-red-200
+                  "
+                >
+                  Retry
+                </button>
               </div>
             </div>
           )}
+
+        {/* =================================================
+            POSTS
+        ================================================= */}
 
         {!loading &&
           !error && (
@@ -1312,13 +1248,21 @@ export default function StudentHome() {
               >
                 <p>
                   Showing{" "}
-                  <strong className="text-blue-950">
+                  <strong
+                    className="
+                      text-blue-950
+                    "
+                  >
                     {
                       currentPagePosts.length
                     }
                   </strong>{" "}
                   of{" "}
-                  <strong className="text-blue-950">
+                  <strong
+                    className="
+                      text-blue-950
+                    "
+                  >
                     {
                       filteredPosts.length
                     }
@@ -1328,7 +1272,12 @@ export default function StudentHome() {
 
                 <p>
                   Total results:{" "}
-                  <strong className="text-blue-950">
+
+                  <strong
+                    className="
+                      text-blue-950
+                    "
+                  >
                     {
                       filteredPosts.length
                     }
@@ -1378,7 +1327,12 @@ export default function StudentHome() {
                       text-gray-400
                     "
                   >
-                    <MaterialIcon name="search_off" />
+                    <MaterialIcon
+                      name="search_off"
+                      className="
+                        text-[28px]
+                      "
+                    />
                   </div>
 
                   <h3
@@ -1390,13 +1344,13 @@ export default function StudentHome() {
                       text-blue-950
                     "
                   >
-                    No posts
-                    found
+                    No posts found
                   </h3>
 
                   <p
                     className="
                       mt-1
+
                       text-sm
                       text-gray-500
                     "
@@ -1405,6 +1359,41 @@ export default function StudentHome() {
                     search or
                     content type.
                   </p>
+
+                  {(search ||
+                    typeFilter !==
+                      "all") && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSearch(
+                          ""
+                        );
+
+                        setTypeFilter(
+                          "all"
+                        );
+                      }}
+                      className="
+                        mt-5
+
+                        rounded-xl
+
+                        bg-yellow-400
+
+                        px-5
+                        py-2.5
+
+                        text-sm
+                        font-black
+                        text-blue-950
+
+                        hover:bg-yellow-500
+                      "
+                    >
+                      Show All Posts
+                    </button>
+                  )}
                 </div>
               )}
 
@@ -1456,7 +1445,9 @@ export default function StudentHome() {
                     lg:grid-cols-[340px_minmax(0,1fr)]
                   "
                 >
-                  {/* IMAGE */}
+                  {/* =========================================
+                      IMAGE
+                  ========================================= */}
 
                   <div
                     className="
@@ -1506,16 +1497,18 @@ export default function StudentHome() {
                       >
                         <MaterialIcon
                           name={
-                            featured.source ===
-                            "event"
-                              ? "event"
+                            getPostCategory(
+                              featured
+                            ) ===
+                            "news"
+                              ? "newspaper"
                               : "campaign"
                           }
                         />
                       </div>
                     )}
 
-                    {/* CLICKABLE TYPE */}
+                    {/* TYPE */}
 
                     <button
                       type="button"
@@ -1559,7 +1552,9 @@ export default function StudentHome() {
                     </button>
                   </div>
 
-                  {/* CONTENT */}
+                  {/* =========================================
+                      CONTENT
+                  ========================================= */}
 
                   <div
                     className="
@@ -1586,6 +1581,7 @@ export default function StudentHome() {
                           font-black
                           uppercase
                           tracking-wider
+
                           text-yellow-600
                         "
                       >
@@ -1685,56 +1681,8 @@ export default function StudentHome() {
                       "
                     >
                       {featured.description ||
-                        "Click to view this campus update."}
+                        "Click to view this campus post."}
                     </p>
-
-                    {(featured.venue ||
-                      featured.time) && (
-                      <div
-                        className="
-                          mt-4
-
-                          flex
-                          flex-wrap
-                          gap-4
-
-                          text-xs
-                          text-gray-500
-                        "
-                      >
-                        {featured.venue && (
-                          <span
-                            className="
-                              flex
-                              items-center
-                              gap-1
-                            "
-                          >
-                            <MaterialIcon name="location_on" />
-
-                            {
-                              featured.venue
-                            }
-                          </span>
-                        )}
-
-                        {featured.time && (
-                          <span
-                            className="
-                              flex
-                              items-center
-                              gap-1
-                            "
-                          >
-                            <MaterialIcon name="schedule" />
-
-                            {
-                              featured.time
-                            }
-                          </span>
-                        )}
-                      </div>
-                    )}
 
                     <button
                       type="button"
@@ -1762,7 +1710,9 @@ export default function StudentHome() {
                     >
                       View Details
 
-                      <MaterialIcon name="arrow_forward" />
+                      <MaterialIcon
+                        name="arrow_forward"
+                      />
                     </button>
                   </div>
                 </motion.article>
@@ -1874,16 +1824,18 @@ export default function StudentHome() {
                             >
                               <MaterialIcon
                                 name={
-                                  post.source ===
-                                  "event"
-                                    ? "event"
+                                  getPostCategory(
+                                    post
+                                  ) ===
+                                  "news"
+                                    ? "newspaper"
                                     : "campaign"
                                 }
                               />
                             </div>
                           )}
 
-                          {/* CLICKABLE TYPE */}
+                          {/* TYPE */}
 
                           <button
                             type="button"
@@ -1929,7 +1881,11 @@ export default function StudentHome() {
 
                         {/* CARD CONTENT */}
 
-                        <div className="p-5">
+                        <div
+                          className="
+                            p-5
+                          "
+                        >
                           <div
                             className="
                               flex
@@ -1963,6 +1919,10 @@ export default function StudentHome() {
                               {
                                 post.organization
                               }
+
+                              {post.acronym
+                                ? ` • ${post.acronym}`
+                                : ""}
                             </p>
                           </div>
 
@@ -1984,6 +1944,8 @@ export default function StudentHome() {
                           <p
                             className="
                               mt-2
+
+                              min-h-[40px]
 
                               text-sm
                               leading-5
@@ -2033,7 +1995,9 @@ export default function StudentHome() {
                             >
                               View
 
-                              <MaterialIcon name="arrow_forward" />
+                              <MaterialIcon
+                                name="arrow_forward"
+                              />
                             </span>
                           </div>
                         </div>
@@ -2098,7 +2062,9 @@ export default function StudentHome() {
                   >
                     View More
 
-                    <MaterialIcon name="expand_more" />
+                    <MaterialIcon
+                      name="expand_more"
+                    />
                   </button>
                 </div>
               )}
@@ -2120,6 +2086,8 @@ export default function StudentHome() {
                     gap-2
                   "
                 >
+                  {/* PREVIOUS */}
+
                   <button
                     type="button"
                     disabled={
@@ -2146,11 +2114,16 @@ export default function StudentHome() {
 
                       shadow-sm
 
+                      disabled:cursor-not-allowed
                       disabled:opacity-40
                     "
                   >
-                    <MaterialIcon name="chevron_left" />
+                    <MaterialIcon
+                      name="chevron_left"
+                    />
                   </button>
+
+                  {/* PAGES */}
 
                   {Array.from(
                     {
@@ -2199,6 +2172,8 @@ export default function StudentHome() {
                                 bg-white
                                 text-gray-600
                                 shadow-sm
+
+                                hover:bg-gray-50
                               `
                           }
                         `}
@@ -2209,6 +2184,8 @@ export default function StudentHome() {
                       </button>
                     )
                   )}
+
+                  {/* NEXT */}
 
                   <button
                     type="button"
@@ -2236,10 +2213,13 @@ export default function StudentHome() {
 
                       shadow-sm
 
+                      disabled:cursor-not-allowed
                       disabled:opacity-40
                     "
                   >
-                    <MaterialIcon name="chevron_right" />
+                    <MaterialIcon
+                      name="chevron_right"
+                    />
                   </button>
                 </div>
               )}
@@ -2277,11 +2257,13 @@ export default function StudentHome() {
           <motion.div
             initial={{
               opacity: 0,
+
               scale:
                 0.97,
             }}
             animate={{
               opacity: 1,
+
               scale: 1,
             }}
             onClick={(
@@ -2303,7 +2285,9 @@ export default function StudentHome() {
               shadow-2xl
             "
           >
-            {/* IMAGE */}
+            {/* =============================================
+                IMAGE
+            ============================================= */}
 
             {selectedPost.image && (
               <div
@@ -2363,12 +2347,24 @@ export default function StudentHome() {
                     text-white
                   "
                 >
-                  <MaterialIcon name="close" />
+                  <MaterialIcon
+                    name="close"
+                  />
                 </button>
               </div>
             )}
 
-            <div className="p-6 sm:p-7">
+            {/* =============================================
+                MODAL CONTENT
+            ============================================= */}
+
+            <div
+              className="
+                p-6
+
+                sm:p-7
+              "
+            >
               {!selectedPost.image && (
                 <div
                   className="
@@ -2394,12 +2390,18 @@ export default function StudentHome() {
                       rounded-full
 
                       bg-gray-100
+
+                      hover:bg-gray-200
                     "
                   >
-                    <MaterialIcon name="close" />
+                    <MaterialIcon
+                      name="close"
+                    />
                   </button>
                 </div>
               )}
+
+              {/* TYPE + DATE */}
 
               <div
                 className="
@@ -2457,6 +2459,8 @@ export default function StudentHome() {
                 </span>
               </div>
 
+              {/* TITLE */}
+
               <h2
                 className="
                   mt-4
@@ -2472,6 +2476,8 @@ export default function StudentHome() {
                   selectedPost.title
                 }
               </h2>
+
+              {/* ORGANIZATION */}
 
               <div
                 className="
@@ -2511,45 +2517,7 @@ export default function StudentHome() {
                 </p>
               </div>
 
-              {(selectedPost.venue ||
-                selectedPost.time) && (
-                <div
-                  className="
-                    mt-5
-
-                    grid
-                    gap-3
-
-                    rounded-2xl
-
-                    bg-gray-100
-
-                    p-4
-
-                    sm:grid-cols-2
-                  "
-                >
-                  {selectedPost.venue && (
-                    <Info
-                      icon="location_on"
-                      label="Venue"
-                      value={
-                        selectedPost.venue
-                      }
-                    />
-                  )}
-
-                  {selectedPost.time && (
-                    <Info
-                      icon="schedule"
-                      label="Time"
-                      value={
-                        selectedPost.time
-                      }
-                    />
-                  )}
-                </div>
-              )}
+              {/* CONTENT */}
 
               <div
                 className="
@@ -2565,6 +2533,8 @@ export default function StudentHome() {
                 {selectedPost.content ||
                   selectedPost.description}
               </div>
+
+              {/* CLOSE */}
 
               <button
                 type="button"
@@ -2597,64 +2567,6 @@ export default function StudentHome() {
           </motion.div>
         </div>
       )}
-    </div>
-  );
-}
-
-/* =====================================================
-   MODAL INFO
-===================================================== */
-
-function Info({
-  icon,
-  label,
-  value,
-}) {
-  return (
-    <div
-      className="
-        flex
-        items-start
-        gap-3
-      "
-    >
-      <div
-        className="
-          text-blue-800
-        "
-      >
-        <MaterialIcon
-          name={
-            icon
-          }
-        />
-      </div>
-
-      <div>
-        <p
-          className="
-            text-[10px]
-            font-black
-            uppercase
-            tracking-wide
-            text-gray-400
-          "
-        >
-          {label}
-        </p>
-
-        <p
-          className="
-            mt-1
-
-            text-sm
-            font-black
-            text-blue-950
-          "
-        >
-          {value}
-        </p>
-      </div>
     </div>
   );
 }

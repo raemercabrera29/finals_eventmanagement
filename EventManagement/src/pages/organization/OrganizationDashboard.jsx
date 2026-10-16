@@ -1,8 +1,16 @@
-import { useEffect, useMemo, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
-import { Link } from "react-router-dom";
+import {
+  Link,
+} from "react-router-dom";
 
-import { motion } from "framer-motion";
+import {
+  motion,
+} from "framer-motion";
 
 import api from "../../api/axiosClient.js";
 
@@ -12,42 +20,45 @@ import EventCalendarWidget from "../../components/common/EventCalendarWidget.jsx
    MATERIAL ICON
 ===================================================== */
 
-function MaterialIcon({ name }) {
-  return <span className="material-symbols-rounded">{name}</span>;
+function MaterialIcon({
+  name,
+  className = "",
+}) {
+  return (
+    <span
+      className={`
+        material-symbols-rounded
+        leading-none
+        ${className}
+      `}
+      aria-hidden="true"
+    >
+      {name}
+    </span>
+  );
 }
 
 /* =====================================================
    STATUS
 ===================================================== */
 
-function statusOf(value) {
-  return String(value || "")
+function statusOf(
+  value,
+) {
+  return String(
+    value || "",
+  )
     .trim()
     .toLowerCase();
 }
 
 /* =====================================================
    NORMALIZE SHARED CALENDAR EVENT
-
-   This makes the calendar compatible with different
-   backend response formats.
-
-   IMPORTANT:
-   Organization side only needs:
-
-   - organization
-   - date
-   - start time
-   - end time
-   - venue
-   - status
-   - organization color
-
-   Confidential information is NOT passed to the
-   calendar.
 ===================================================== */
 
-function normalizeCalendarEvent(item) {
+function normalizeCalendarEvent(
+  item,
+) {
   if (!item) {
     return null;
   }
@@ -56,14 +67,23 @@ function normalizeCalendarEvent(item) {
      ORGANIZATION
   =================================================== */
 
-  const organization = item.organization ||
+  const organization =
+    item.organization ||
     item.organizationData ||
-    item.extendedProps?.organization || {
-      organizationName: item.organizationName || "Organization",
+    item.extendedProps
+      ?.organization || {
+      organizationName:
+        item.organizationName ||
+        "Organization",
 
-      acronym: item.organizationAcronym || "",
+      acronym:
+        item.organizationAcronym ||
+        "",
 
-      color: item.organizationColor || item.color || "#FACC15",
+      color:
+        item.organizationColor ||
+        item.color ||
+        "#FACC15",
     };
 
   /* ===================================================
@@ -75,23 +95,28 @@ function normalizeCalendarEvent(item) {
     item.date ||
     item.start ||
     item.schedule?.date ||
-    item.currentSchedule?.date ||
-    item.approvedSchedule?.date ||
-    item.extendedProps?.eventDate ||
+    item.currentSchedule
+      ?.date ||
+    item.approvedSchedule
+      ?.date ||
+    item.extendedProps
+      ?.eventDate ||
     "";
 
   /* ===================================================
      START TIME
-
-     Supports several possible formats from the API.
   =================================================== */
 
   const startTime =
     item.startTime ||
-    item.schedule?.startTime ||
-    item.currentSchedule?.startTime ||
-    item.approvedSchedule?.startTime ||
-    item.extendedProps?.startTime ||
+    item.schedule
+      ?.startTime ||
+    item.currentSchedule
+      ?.startTime ||
+    item.approvedSchedule
+      ?.startTime ||
+    item.extendedProps
+      ?.startTime ||
     "";
 
   /* ===================================================
@@ -100,20 +125,26 @@ function normalizeCalendarEvent(item) {
 
   const endTime =
     item.endTime ||
-    item.schedule?.endTime ||
-    item.currentSchedule?.endTime ||
-    item.approvedSchedule?.endTime ||
-    item.extendedProps?.endTime ||
+    item.schedule
+      ?.endTime ||
+    item.currentSchedule
+      ?.endTime ||
+    item.approvedSchedule
+      ?.endTime ||
+    item.extendedProps
+      ?.endTime ||
     "";
 
   /* ===================================================
-     ALREADY FORMATTED TIME
-
-     Example:
-     "8:00 AM - 5:00 PM"
+     FORMATTED TIME
   =================================================== */
 
-  const time = item.time || item.timeRange || item.extendedProps?.time || "";
+  const time =
+    item.time ||
+    item.timeRange ||
+    item.extendedProps
+      ?.time ||
+    "";
 
   /* ===================================================
      VENUE
@@ -123,44 +154,64 @@ function normalizeCalendarEvent(item) {
     item.venue ||
     item.location ||
     item.schedule?.venue ||
-    item.currentSchedule?.venue ||
-    item.approvedSchedule?.venue ||
-    item.extendedProps?.venue ||
+    item.currentSchedule
+      ?.venue ||
+    item.approvedSchedule
+      ?.venue ||
+    item.extendedProps
+      ?.venue ||
     "Venue not specified";
 
   /* ===================================================
      STATUS
   =================================================== */
 
-  const status = item.status || item.extendedProps?.status || "approved";
+  const status =
+    item.status ||
+    item.extendedProps
+      ?.status ||
+    "approved";
 
   /* ===================================================
      COLOR
   =================================================== */
 
-  let organizationColor = "#FACC15";
+  let organizationColor =
+    "#FACC15";
 
-  if (organization && typeof organization === "object") {
+  if (
+    organization &&
+    typeof organization ===
+      "object"
+  ) {
     organizationColor =
-      organization.color || item.organizationColor || item.color || "#FACC15";
+      organization.color ||
+      item.organizationColor ||
+      item.color ||
+      "#FACC15";
   } else {
-    organizationColor = item.organizationColor || item.color || "#FACC15";
+    organizationColor =
+      item.organizationColor ||
+      item.color ||
+      "#FACC15";
   }
 
   /* ===================================================
-     RETURN SAFE CALENDAR OBJECT
-
-     Notice that confidential fields such as:
-     description, participants, documents, adminRemarks,
-     special requests, etc. are NOT copied.
+     SAFE CALENDAR OBJECT
   =================================================== */
 
   return {
-    _id: item._id || item.id || `${eventDate}-${String(organization)}`,
+    _id:
+      item._id ||
+      item.id ||
+      `${eventDate}-${String(
+        organization,
+      )}`,
 
     eventDate,
 
-    start: eventDate,
+    start:
+      eventDate,
 
     organization,
 
@@ -174,7 +225,8 @@ function normalizeCalendarEvent(item) {
 
     status,
 
-    color: organizationColor,
+    color:
+      organizationColor,
 
     organizationColor,
 
@@ -207,151 +259,212 @@ export default function OrganizationDashboard() {
      ORGANIZATION
   =================================================== */
 
-  const [organization, setOrganization] = useState(null);
+  const [
+    organization,
+    setOrganization,
+  ] =
+    useState(null);
 
   /* ===================================================
      MY BOOKINGS
   =================================================== */
 
-  const [myBookings, setMyBookings] = useState([]);
+  const [
+    myBookings,
+    setMyBookings,
+  ] =
+    useState([]);
 
   /* ===================================================
      GENERAL CALENDAR
   =================================================== */
 
-  const [sharedCalendar, setSharedCalendar] = useState([]);
+  const [
+    sharedCalendar,
+    setSharedCalendar,
+  ] =
+    useState([]);
 
   /* ===================================================
      LOADING
   =================================================== */
 
-  const [loading, setLoading] = useState(true);
+  const [
+    loading,
+    setLoading,
+  ] =
+    useState(true);
 
   /* ===================================================
      ERROR
-
-     Dashboard stays usable if one request fails.
   =================================================== */
 
-  const [error, setError] = useState("");
+  const [
+    error,
+    setError,
+  ] =
+    useState("");
 
   /* ===================================================
      LOAD DASHBOARD
   =================================================== */
 
   useEffect(() => {
-    const load = async () => {
-      setLoading(true);
+    const load =
+      async () => {
+        setLoading(
+          true,
+        );
 
-      setError("");
+        setError("");
 
-      try {
-        const [profileResult, myResult, calendarResult] = await Promise.all([
-          /* =========================================
-                 ORGANIZATION PROFILE
-              ========================================= */
+        try {
+          const [
+            profileResult,
+            myResult,
+            calendarResult,
+          ] =
+            await Promise.all(
+              [
+                api.get(
+                  "/organizations/me",
+                ),
 
-          api.get("/organizations/me"),
+                api.get(
+                  "/bookings/my",
+                ),
 
-          /* =========================================
-                 CURRENT ORGANIZATION BOOKINGS
-              ========================================= */
+                api.get(
+                  "/bookings/calendar",
+                ),
+              ],
+            );
 
-          api.get("/bookings/my"),
-
-          /* =========================================
-                 GENERAL ORGANIZATION CALENDAR
-              ========================================= */
-
-          api.get("/bookings/calendar"),
-        ]);
-
-        /* =============================================
+          /* =============================================
              ORGANIZATION
           ============================================= */
 
-        setOrganization(
-          profileResult.data?.organization || profileResult.data || null,
-        );
+          setOrganization(
+            profileResult.data
+              ?.organization ||
+              profileResult.data ||
+              null,
+          );
 
-        /* =============================================
+          /* =============================================
              MY BOOKINGS
           ============================================= */
 
-        const myBookingData = Array.isArray(myResult.data)
-          ? myResult.data
-          : Array.isArray(myResult.data?.bookings)
-            ? myResult.data.bookings
-            : [];
+          const myBookingData =
+            Array.isArray(
+              myResult.data,
+            )
+              ? myResult.data
+              : Array.isArray(
+                    myResult.data
+                      ?.bookings,
+                  )
+                ? myResult.data
+                    .bookings
+                : [];
 
-        setMyBookings(myBookingData);
+          setMyBookings(
+            myBookingData,
+          );
 
-        /* =============================================
-             SHARED CALENDAR RAW DATA
+          /* =============================================
+             SHARED CALENDAR
           ============================================= */
 
-        const rawCalendar = Array.isArray(calendarResult.data)
-          ? calendarResult.data
-          : Array.isArray(calendarResult.data?.bookings)
-            ? calendarResult.data.bookings
-            : Array.isArray(calendarResult.data?.events)
-              ? calendarResult.data.events
-              : [];
+          const rawCalendar =
+            Array.isArray(
+              calendarResult.data,
+            )
+              ? calendarResult.data
+              : Array.isArray(
+                    calendarResult
+                      .data
+                      ?.bookings,
+                  )
+                ? calendarResult
+                    .data
+                    .bookings
+                : Array.isArray(
+                      calendarResult
+                        .data
+                        ?.events,
+                    )
+                  ? calendarResult
+                      .data
+                      .events
+                  : [];
 
-        /* =============================================
+          /* =============================================
              NORMALIZE CALENDAR
-
-             This is the important part for:
-             START TIME
-             END TIME
-             VENUE
-             ORGANIZATION
           ============================================= */
 
-        const normalizedCalendar = rawCalendar
-          .map(normalizeCalendarEvent)
-          .filter(Boolean);
+          const normalizedCalendar =
+            rawCalendar
+              .map(
+                normalizeCalendarEvent,
+              )
+              .filter(
+                Boolean,
+              );
 
-        setSharedCalendar(normalizedCalendar);
+          setSharedCalendar(
+            normalizedCalendar,
+          );
 
-        /* =============================================
-             TEMPORARY DEVELOPMENT CHECK
+          console.log(
+            "GENERAL CALENDAR DATA:",
+            normalizedCalendar.map(
+              (
+                event,
+              ) => ({
+                organization:
+                  event.organization,
 
-             Open browser console if you want to see
-             exactly what the calendar receives.
+                eventDate:
+                  event.eventDate,
 
-             Safe to keep during development.
-          ============================================= */
+                startTime:
+                  event.startTime,
 
-        console.log(
-          "GENERAL CALENDAR DATA:",
-          normalizedCalendar.map((event) => ({
-            organization: event.organization,
+                endTime:
+                  event.endTime,
 
-            eventDate: event.eventDate,
+                time:
+                  event.time,
 
-            startTime: event.startTime,
+                venue:
+                  event.venue,
 
-            endTime: event.endTime,
+                status:
+                  event.status,
+              }),
+            ),
+          );
+        } catch (
+          error
+        ) {
+          console.error(
+            "ORGANIZATION DASHBOARD ERROR:",
+            error,
+          );
 
-            time: event.time,
-
-            venue: event.venue,
-
-            status: event.status,
-          })),
-        );
-      } catch (error) {
-        console.error("ORGANIZATION DASHBOARD ERROR:", error);
-
-        setError(
-          error.response?.data?.message ||
-            "Unable to load some dashboard information.",
-        );
-      } finally {
-        setLoading(false);
-      }
-    };
+          setError(
+            error.response
+              ?.data
+              ?.message ||
+              "Unable to load some dashboard information.",
+          );
+        } finally {
+          setLoading(
+            false,
+          );
+        }
+      };
 
     load();
   }, []);
@@ -361,43 +474,81 @@ export default function OrganizationDashboard() {
   =================================================== */
 
   const name =
-    organization?.organizationName || organization?.acronym || "Organization";
+    organization
+      ?.organizationName ||
+    organization
+      ?.acronym ||
+    "Organization";
 
   /* ===================================================
      TOTAL
   =================================================== */
 
-  const total = myBookings.length;
+  const total =
+    myBookings.length;
 
   /* ===================================================
      APPROVED
   =================================================== */
 
-  const approved = useMemo(
-    () =>
-      myBookings.filter((item) => statusOf(item.status) === "approved").length,
-    [myBookings],
-  );
+  const approved =
+    useMemo(
+      () =>
+        myBookings.filter(
+          (
+            item,
+          ) =>
+            statusOf(
+              item.status,
+            ) ===
+            "approved",
+        ).length,
+      [
+        myBookings,
+      ],
+    );
 
   /* ===================================================
      PENDING
   =================================================== */
 
-  const pending = useMemo(
-    () =>
-      myBookings.filter((item) => statusOf(item.status) === "pending").length,
-    [myBookings],
-  );
+  const pending =
+    useMemo(
+      () =>
+        myBookings.filter(
+          (
+            item,
+          ) =>
+            statusOf(
+              item.status,
+            ) ===
+            "pending",
+        ).length,
+      [
+        myBookings,
+      ],
+    );
 
   /* ===================================================
      REJECTED
   =================================================== */
 
-  const rejected = useMemo(
-    () =>
-      myBookings.filter((item) => statusOf(item.status) === "rejected").length,
-    [myBookings],
-  );
+  const rejected =
+    useMemo(
+      () =>
+        myBookings.filter(
+          (
+            item,
+          ) =>
+            statusOf(
+              item.status,
+            ) ===
+            "rejected",
+        ).length,
+      [
+        myBookings,
+      ],
+    );
 
   /* =====================================================
      UI
@@ -406,14 +557,18 @@ export default function OrganizationDashboard() {
   return (
     <div
       className="
-        space-y-8
+        mx-auto
+        w-full
+        max-w-[1120px]
+
+        space-y-5
       "
     >
       {/* =================================================
-          WELCOME
+          WELCOME HEADER
       ================================================= */}
 
-      <motion.div
+      <motion.section
         initial={{
           opacity: 0,
           y: 20,
@@ -423,24 +578,26 @@ export default function OrganizationDashboard() {
           y: 0,
         }}
         className="
-          rounded-3xl
+          rounded-[22px]
 
           bg-gradient-to-r
           from-[#020617]
-          via-[#001F3F]
-          to-[#003B7A]
+          via-[#00254d]
+          to-[#064477]
 
-          p-8
+          px-6
+          py-6
 
           text-white
         "
       >
         <p
           className="
-            text-sm
-            font-bold
+            text-[9px]
+            font-black
             uppercase
-            tracking-widest
+            tracking-[0.16em]
+
             text-yellow-400
           "
         >
@@ -449,9 +606,9 @@ export default function OrganizationDashboard() {
 
         <h1
           className="
-            mt-3
+            mt-2
 
-            text-4xl
+            text-[26px]
             font-black
           "
         >
@@ -460,14 +617,22 @@ export default function OrganizationDashboard() {
 
         <p
           className="
-            mt-3
+            mt-2
 
-            text-gray-200
+            max-w-2xl
+
+            text-[11px]
+            leading-5
+            text-blue-100
           "
         >
-          Manage your organization's events, reservations and student updates.
+          Manage your
+          organization's
+          events,
+          reservations and
+          student updates.
         </p>
-      </motion.div>
+      </motion.section>
 
       {/* =================================================
           ERROR
@@ -490,12 +655,17 @@ export default function OrganizationDashboard() {
             px-4
             py-3
 
-            text-[11px]
+            text-[10px]
             font-bold
             text-red-700
           "
         >
-          <MaterialIcon name="error" />
+          <MaterialIcon
+            name="error"
+            className="
+              text-[18px]
+            "
+          />
 
           {error}
         </div>
@@ -509,18 +679,42 @@ export default function OrganizationDashboard() {
         className="
           grid
           grid-cols-2
-          gap-4
+          gap-3
 
           lg:grid-cols-4
         "
       >
-        <Stat title="Total Bookings" value={total} />
+        <Stat
+          title="Total Bookings"
+          value={
+            total
+          }
+          icon="event_note"
+        />
 
-        <Stat title="Pending" value={pending} />
+        <Stat
+          title="Pending"
+          value={
+            pending
+          }
+          icon="schedule"
+        />
 
-        <Stat title="Approved" value={approved} />
+        <Stat
+          title="Approved"
+          value={
+            approved
+          }
+          icon="check_circle"
+        />
 
-        <Stat title="Rejected" value={rejected} />
+        <Stat
+          title="Rejected"
+          value={
+            rejected
+          }
+          icon="cancel"
+        />
       </div>
 
       {/* =================================================
@@ -530,9 +724,10 @@ export default function OrganizationDashboard() {
       <div
         className="
           grid
-          gap-6
+          items-start
+          gap-5
 
-          lg:grid-cols-3
+          lg:grid-cols-[280px_minmax(0,1fr)]
         "
       >
         {/* ===============================================
@@ -541,11 +736,9 @@ export default function OrganizationDashboard() {
 
         <div
           className="
-            space-y-6
+            space-y-4
           "
         >
-          {/* EVENT BOOKING */}
-
           <Action
             icon="event_available"
             title="Event Venue Booking"
@@ -554,8 +747,6 @@ export default function OrganizationDashboard() {
             action="Book Venue"
           />
 
-          {/* CREATE POST */}
-
           <Action
             icon="campaign"
             title="Create Post"
@@ -563,8 +754,6 @@ export default function OrganizationDashboard() {
             path="/organization/create-post"
             action="Create Post"
           />
-
-          {/* ADMIN REQUEST */}
 
           <Action
             icon="support_agent"
@@ -579,50 +768,94 @@ export default function OrganizationDashboard() {
             GENERAL CALENDAR
         =============================================== */}
 
-        <div
+        <motion.div
+          initial={{
+            opacity: 0,
+            y: 15,
+          }}
+          animate={{
+            opacity: 1,
+            y: 0,
+          }}
+          transition={{
+            delay: 0.15,
+          }}
           className="
-            lg:col-span-2
+            min-w-0
           "
         >
           {loading ? (
             <div
               className="
                 flex
-                min-h-[420px]
+                min-h-[430px]
+
                 items-center
                 justify-center
 
-                rounded-3xl
+                rounded-[22px]
+
+                border
+                border-gray-100
 
                 bg-white
 
-                p-16
+                p-8
 
                 text-center
                 text-gray-500
 
-                shadow-lg
+                shadow-sm
               "
             >
               <div>
-                <MaterialIcon name="calendar_month" />
+                <div
+                  className="
+                    mx-auto
+
+                    flex
+                    h-12
+                    w-12
+
+                    items-center
+                    justify-center
+
+                    rounded-xl
+
+                    bg-blue-950
+
+                    text-yellow-400
+                  "
+                >
+                  <MaterialIcon
+                    name="calendar_month"
+                    className="
+                      text-[24px]
+                    "
+                  />
+                </div>
 
                 <p
                   className="
-                    mt-2
+                    mt-3
 
-                    text-sm
+                    text-[10px]
                     font-bold
                   "
                 >
-                  Loading calendar...
+                  Loading
+                  calendar...
                 </p>
               </div>
             </div>
           ) : (
-            <EventCalendarWidget events={sharedCalendar} />
+            <EventCalendarWidget
+              events={
+                sharedCalendar
+              }
+            />
           )}
-        </div>
+        </motion.div>
       </div>
     </div>
   );
@@ -632,42 +865,97 @@ export default function OrganizationDashboard() {
    STAT CARD
 ===================================================== */
 
-function Stat({ title, value }) {
+function Stat({
+  title,
+  value,
+  icon,
+}) {
   return (
-    <div
+    <motion.div
+      initial={{
+        opacity: 0,
+        y: 10,
+      }}
+      animate={{
+        opacity: 1,
+        y: 0,
+      }}
       className="
         rounded-2xl
 
+        border
+        border-gray-200
+
         bg-white
 
-        p-5
+        p-4
 
-        shadow
+        shadow-sm
       "
     >
-      <p
+      <div
         className="
-          text-xs
-          font-bold
-          uppercase
-          text-gray-500
+          flex
+          items-center
+          justify-between
+          gap-3
         "
       >
-        {title}
-      </p>
+        <div>
+          <p
+            className="
+              text-[7px]
+              font-black
+              uppercase
+              tracking-wide
 
-      <p
-        className="
-          mt-3
+              text-gray-500
+            "
+          >
+            {title}
+          </p>
 
-          text-3xl
-          font-black
-          text-blue-950
-        "
-      >
-        {value}
-      </p>
-    </div>
+          <p
+            className="
+              mt-2
+
+              text-[20px]
+              font-black
+              text-blue-950
+            "
+          >
+            {value}
+          </p>
+        </div>
+
+        <div
+          className="
+            flex
+            h-9
+            w-9
+            shrink-0
+
+            items-center
+            justify-center
+
+            rounded-xl
+
+            bg-blue-950
+
+            text-yellow-400
+          "
+        >
+          <MaterialIcon
+            name={
+              icon
+            }
+            className="
+              text-[19px]
+            "
+          />
+        </div>
+      </div>
+    </motion.div>
   );
 }
 
@@ -675,17 +963,41 @@ function Stat({ title, value }) {
    ACTION CARD
 ===================================================== */
 
-function Action({ icon, title, text, path, action }) {
+function Action({
+  icon,
+  title,
+  text,
+  path,
+  action,
+}) {
   return (
-    <div
+    <motion.div
+      initial={{
+        opacity: 0,
+        y: 15,
+      }}
+      animate={{
+        opacity: 1,
+        y: 0,
+      }}
+      whileHover={{
+        y: -2,
+      }}
       className="
-        rounded-3xl
+        rounded-[20px]
+
+        border
+        border-gray-100
 
         bg-white
 
-        p-7
+        p-5
 
-        shadow-lg
+        shadow-sm
+
+        transition-shadow
+
+        hover:shadow-md
       "
     >
       {/* ICON */}
@@ -693,8 +1005,9 @@ function Action({ icon, title, text, path, action }) {
       <div
         className="
           flex
-          h-12
-          w-12
+          h-10
+          w-10
+
           items-center
           justify-center
 
@@ -705,16 +1018,23 @@ function Action({ icon, title, text, path, action }) {
           text-yellow-400
         "
       >
-        <MaterialIcon name={icon} />
+        <MaterialIcon
+          name={
+            icon
+          }
+          className="
+            text-[20px]
+          "
+        />
       </div>
 
       {/* TITLE */}
 
       <h2
         className="
-          mt-5
+          mt-4
 
-          text-xl
+          text-[17px]
           font-black
           text-blue-950
         "
@@ -728,7 +1048,8 @@ function Action({ icon, title, text, path, action }) {
         className="
           mt-2
 
-          text-sm
+          text-[10px]
+          leading-5
           text-gray-600
         "
       >
@@ -738,22 +1059,34 @@ function Action({ icon, title, text, path, action }) {
       {/* LINK */}
 
       <Link
-        to={path}
+        to={
+          path
+        }
         className="
-          mt-5
+          mt-4
 
-          inline-block
+          inline-flex
+          items-center
+          gap-1
 
-          font-bold
-          text-yellow-600
+          text-[10px]
+          font-black
+          text-blue-950
 
-          transition
+          transition-colors
 
-          hover:text-yellow-500
+          hover:text-yellow-600
         "
       >
-        {action} →
+        {action}
+
+        <MaterialIcon
+          name="arrow_forward"
+          className="
+            text-[16px]
+          "
+        />
       </Link>
-    </div>
+    </motion.div>
   );
 }

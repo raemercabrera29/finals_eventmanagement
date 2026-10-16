@@ -1,12 +1,31 @@
-import { useEffect, useState } from "react";
+import {
+  useEffect,
+  useState,
+} from "react";
 
-import { motion } from "framer-motion";
+import {
+  motion,
+} from "framer-motion";
 
 import api from "../../api/axiosClient.js";
 
-function MaterialIcon({ name }) {
-  return <span className="material-symbols-rounded">{name}</span>;
+/* =====================================================
+   MATERIAL ICON
+===================================================== */
+
+function MaterialIcon({
+  name,
+}) {
+  return (
+    <span className="material-symbols-rounded">
+      {name}
+    </span>
+  );
 }
+
+/* =====================================================
+   EMPTY FORM
+===================================================== */
 
 const emptyForm = {
   type: "",
@@ -15,22 +34,57 @@ const emptyForm = {
   date: "",
 };
 
-const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
+/* =====================================================
+   IMAGE SETTINGS
+===================================================== */
 
-const ALLOWED_IMAGES = ["image/jpeg", "image/png", "image/webp"];
+const MAX_IMAGE_SIZE =
+  5 * 1024 * 1024;
+
+const ALLOWED_IMAGES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+];
+
+/* =====================================================
+   CREATE POST
+===================================================== */
 
 export default function CreatePost() {
-  const [formData, setFormData] = useState(emptyForm);
+  const [
+    formData,
+    setFormData,
+  ] = useState(
+    emptyForm
+  );
 
-  const [imageFile, setImageFile] = useState(null);
+  const [
+    imageFile,
+    setImageFile,
+  ] = useState(
+    null
+  );
 
-  const [imagePreview, setImagePreview] = useState("");
+  const [
+    imagePreview,
+    setImagePreview,
+  ] = useState("");
 
-  const [submitting, setSubmitting] = useState(false);
+  const [
+    submitting,
+    setSubmitting,
+  ] = useState(false);
 
-  const [error, setError] = useState("");
+  const [
+    error,
+    setError,
+  ] = useState("");
 
-  const [success, setSuccess] = useState("");
+  const [
+    success,
+    setSuccess,
+  ] = useState("");
 
   /* ===================================================
      PREVIEW CLEANUP
@@ -38,183 +92,312 @@ export default function CreatePost() {
 
   useEffect(() => {
     return () => {
-      if (imagePreview) {
-        URL.revokeObjectURL(imagePreview);
+      if (
+        imagePreview
+      ) {
+        URL.revokeObjectURL(
+          imagePreview
+        );
       }
     };
-  }, [imagePreview]);
+  }, [
+    imagePreview,
+  ]);
 
   /* ===================================================
      FORM
   =================================================== */
 
-  const handleChange = (event) => {
-    const { name, value } = event.target;
+  const handleChange =
+    (
+      event
+    ) => {
+      const {
+        name,
+        value,
+      } =
+        event.target;
 
-    setFormData((previous) => ({
-      ...previous,
+      setFormData(
+        (
+          previous
+        ) => ({
+          ...previous,
 
-      [name]: value,
-    }));
+          [name]:
+            value,
+        })
+      );
 
-    setError("");
-    setSuccess("");
-  };
+      setError("");
+      setSuccess("");
+    };
 
   /* ===================================================
      IMAGE
   =================================================== */
 
-  const handleImage = (event) => {
-    const file = event.target.files?.[0];
+  const handleImage =
+    (
+      event
+    ) => {
+      const file =
+        event.target
+          .files?.[0];
 
-    if (!file) {
-      return;
-    }
+      if (!file) {
+        return;
+      }
 
-    setError("");
-    setSuccess("");
+      setError("");
+      setSuccess("");
 
-    if (!ALLOWED_IMAGES.includes(file.type)) {
-      setError("Please upload a JPG, PNG, or WEBP image.");
+      /* ===============================================
+         IMAGE TYPE
+      =============================================== */
 
-      event.target.value = "";
+      if (
+        !ALLOWED_IMAGES.includes(
+          file.type
+        )
+      ) {
+        setError(
+          "Please upload a JPG, PNG, or WEBP image."
+        );
 
-      return;
-    }
+        event.target.value =
+          "";
 
-    if (file.size > MAX_IMAGE_SIZE) {
-      setError("Image must be 5 MB or smaller.");
+        return;
+      }
 
-      event.target.value = "";
+      /* ===============================================
+         IMAGE SIZE
+      =============================================== */
 
-      return;
-    }
+      if (
+        file.size >
+        MAX_IMAGE_SIZE
+      ) {
+        setError(
+          "Image must be 5 MB or smaller."
+        );
 
-    if (imagePreview) {
-      URL.revokeObjectURL(imagePreview);
-    }
+        event.target.value =
+          "";
 
-    setImageFile(file);
+        return;
+      }
 
-    const preview = URL.createObjectURL(file);
+      if (
+        imagePreview
+      ) {
+        URL.revokeObjectURL(
+          imagePreview
+        );
+      }
 
-    setImagePreview(preview);
-  };
+      setImageFile(
+        file
+      );
+
+      const preview =
+        URL.createObjectURL(
+          file
+        );
+
+      setImagePreview(
+        preview
+      );
+    };
 
   /* ===================================================
      REMOVE IMAGE
   =================================================== */
 
-  const removeImage = () => {
-    if (imagePreview) {
-      URL.revokeObjectURL(imagePreview);
-    }
+  const removeImage =
+    () => {
+      if (
+        imagePreview
+      ) {
+        URL.revokeObjectURL(
+          imagePreview
+        );
+      }
 
-    setImageFile(null);
+      setImageFile(
+        null
+      );
 
-    setImagePreview("");
-  };
+      setImagePreview(
+        ""
+      );
+    };
 
   /* ===================================================
      SUBMIT
   =================================================== */
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
+  const handleSubmit =
+    async (
+      event
+    ) => {
+      event.preventDefault();
 
-    setError("");
-    setSuccess("");
+      setError("");
+      setSuccess("");
 
-    if (!formData.type) {
-      setError("Please select a Post Type.");
+      /* ===============================================
+         VALIDATION
+      =============================================== */
 
-      return;
-    }
+      if (
+        !formData.type
+      ) {
+        setError(
+          "Please select a Post Type."
+        );
 
-    if (!formData.title.trim()) {
-      setError("Please enter a Title.");
-
-      return;
-    }
-
-    if (!formData.content.trim()) {
-      setError("Please enter Post Content.");
-
-      return;
-    }
-
-    setSubmitting(true);
-
-    try {
-      /*
-          FormData is REQUIRED because
-          we're uploading an image.
-        */
-
-      const payload = new FormData();
-
-      payload.append("type", formData.type);
-
-      payload.append("title", formData.title.trim());
-
-      payload.append("content", formData.content.trim());
-
-      payload.append("eventDate", formData.date || "");
-
-      if (imageFile) {
-        /*
-            IMPORTANT:
-            "image" MUST match:
-
-            upload.single("image")
-
-            in announcements.js
-          */
-
-        payload.append("image", imageFile, imageFile.name);
+        return;
       }
 
-      /*
-          IMPORTANT:
+      if (
+        !formData.title.trim()
+      ) {
+        setError(
+          "Please enter a Title."
+        );
 
-          DO NOT put:
+        return;
+      }
 
-          headers: {
-            "Content-Type":
-              "multipart/form-data"
-          }
+      if (
+        !formData.content.trim()
+      ) {
+        setError(
+          "Please enter Post Content."
+        );
 
-          Axios/browser creates the
-          multipart boundary for us.
-        */
+        return;
+      }
 
-      const response = await api.post("/announcements", payload);
-
-      setSuccess(
-        response.data?.message ||
-          "Post submitted successfully for Administrator review.",
+      setSubmitting(
+        true
       );
 
-      setFormData(emptyForm);
+      try {
+        /* =============================================
+           FORM DATA
+        ============================================= */
 
-      removeImage();
-    } catch (err) {
-      console.error("CREATE POST ERROR:", err);
+        const payload =
+          new FormData();
 
-      console.error("SERVER RESPONSE:", err.response?.data);
+        payload.append(
+          "type",
+          formData.type
+        );
 
-      setError(err.response?.data?.message || "Unable to create announcement.");
-    } finally {
-      setSubmitting(false);
-    }
-  };
+        payload.append(
+          "title",
+          formData.title.trim()
+        );
+
+        payload.append(
+          "content",
+          formData.content.trim()
+        );
+
+        payload.append(
+          "eventDate",
+          formData.date ||
+            ""
+        );
+
+        /* =============================================
+           IMAGE
+        ============================================= */
+
+        if (
+          imageFile
+        ) {
+          payload.append(
+            "image",
+            imageFile,
+            imageFile.name
+          );
+        }
+
+        /* =============================================
+           API
+        ============================================= */
+
+        const response =
+          await api.post(
+            "/announcements",
+            payload
+          );
+
+        setSuccess(
+          response.data
+            ?.message ||
+            "Post submitted successfully for Administrator review."
+        );
+
+        /* =============================================
+           RESET
+        ============================================= */
+
+        setFormData(
+          emptyForm
+        );
+
+        removeImage();
+      } catch (
+        err
+      ) {
+        console.error(
+          "CREATE POST ERROR:",
+          err
+        );
+
+        console.error(
+          "SERVER RESPONSE:",
+          err.response
+            ?.data
+        );
+
+        setError(
+          err.response?.data
+            ?.message ||
+            "Unable to create announcement."
+        );
+      } finally {
+        setSubmitting(
+          false
+        );
+      }
+    };
+
+  /* =====================================================
+     PAGE
+  ===================================================== */
 
   return (
-    <div className="space-y-8">
-      {/* HEADER */}
+    <div
+      className="
+        mx-auto
+        w-full
+        max-w-[1120px]
 
-      <motion.div
+        space-y-5
+      "
+    >
+      {/* =================================================
+          HEADER
+      ================================================= */}
+
+      <motion.section
         initial={{
           opacity: 0,
           y: 20,
@@ -224,21 +407,26 @@ export default function CreatePost() {
           y: 0,
         }}
         className="
-          rounded-3xl
+          rounded-[22px]
+
           bg-gradient-to-r
           from-[#020617]
-          via-[#001F3F]
-          to-[#003B7A]
-          p-8
+          via-[#00254d]
+          to-[#064477]
+
+          px-6
+          py-6
+
           text-white
         "
       >
         <p
           className="
-            text-sm
-            font-bold
+            text-[9px]
+            font-black
             uppercase
-            tracking-widest
+            tracking-[0.16em]
+
             text-yellow-400
           "
         >
@@ -247,25 +435,37 @@ export default function CreatePost() {
 
         <h1
           className="
-            mt-3
-            text-4xl
+            mt-2
+
+            text-[26px]
             font-black
           "
         >
-          Create Announcement / News
+          Create Announcement /
+          News
         </h1>
 
         <p
           className="
-            mt-3
-            text-gray-200
+            mt-2
+
+            max-w-2xl
+
+            text-[11px]
+            leading-5
+            text-blue-100
           "
         >
-          Share updates, announcements, and event information with students.
+          Share updates,
+          announcements, and
+          event information with
+          students.
         </p>
-      </motion.div>
+      </motion.section>
 
-      {/* ERROR */}
+      {/* =================================================
+          ERROR
+      ================================================= */}
 
       {error && (
         <div
@@ -273,25 +473,47 @@ export default function CreatePost() {
             flex
             items-start
             gap-3
+
             rounded-2xl
+
             border
             border-red-200
+
             bg-red-50
+
             p-4
+
             text-red-700
           "
         >
-          <MaterialIcon name="error" />
+          <MaterialIcon
+            name="error"
+          />
 
           <div>
-            <p className="font-black">Unable to Submit</p>
+            <p
+              className="
+                font-black
+              "
+            >
+              Unable to Submit
+            </p>
 
-            <p className="mt-1 text-sm">{error}</p>
+            <p
+              className="
+                mt-1
+                text-sm
+              "
+            >
+              {error}
+            </p>
           </div>
         </div>
       )}
 
-      {/* SUCCESS */}
+      {/* =================================================
+          SUCCESS
+      ================================================= */}
 
       {success && (
         <div
@@ -299,25 +521,48 @@ export default function CreatePost() {
             flex
             items-start
             gap-3
+
             rounded-2xl
+
             border
             border-green-200
+
             bg-green-50
+
             p-4
+
             text-green-700
           "
         >
-          <MaterialIcon name="check_circle" />
+          <MaterialIcon
+            name="check_circle"
+          />
 
           <div>
-            <p className="font-black">Submitted for Review</p>
+            <p
+              className="
+                font-black
+              "
+            >
+              Submitted for
+              Review
+            </p>
 
-            <p className="mt-1 text-sm">{success}</p>
+            <p
+              className="
+                mt-1
+                text-sm
+              "
+            >
+              {success}
+            </p>
           </div>
         </div>
       )}
 
-      {/* FORM */}
+      {/* =================================================
+          FORM
+      ================================================= */}
 
       <motion.form
         initial={{
@@ -328,146 +573,311 @@ export default function CreatePost() {
           opacity: 1,
           y: 0,
         }}
-        onSubmit={handleSubmit}
+        onSubmit={
+          handleSubmit
+        }
         className="
-          rounded-3xl
+          rounded-[22px]
+
+          border
+          border-gray-100
+
           bg-white
-          p-7
-          shadow-lg
+
+          p-6
+
+          shadow-sm
+
+          sm:p-7
         "
       >
-        <h2
+        {/* ===============================================
+            FORM TITLE
+        =============================================== */}
+
+        <div
           className="
-            text-2xl
-            font-black
-            text-blue-950
+            flex
+            items-center
+            gap-3
           "
         >
-          Post Information
-        </h2>
+          <div
+            className="
+              flex
+              h-10
+              w-10
+              shrink-0
 
-        {/* POST TYPE */}
+              items-center
+              justify-center
 
-        <div className="mt-6">
+              rounded-xl
+
+              bg-blue-950
+
+              text-yellow-400
+            "
+          >
+            <MaterialIcon
+              name="campaign"
+            />
+          </div>
+
+          <div>
+            <h2
+              className="
+                text-[20px]
+                font-black
+                text-blue-950
+              "
+            >
+              Post Information
+            </h2>
+
+            <p
+              className="
+                mt-1
+
+                text-[9px]
+                text-gray-500
+              "
+            >
+              Enter the details
+              of your
+              announcement or
+              news post.
+            </p>
+          </div>
+        </div>
+
+        {/* =================================================
+            POST TYPE
+        ================================================= */}
+
+        <div
+          className="
+            mt-6
+          "
+        >
           <label
             className="
-              text-sm
+              text-[10px]
               font-black
               text-blue-950
             "
           >
-            Post Type <span className="text-red-500">*</span>
+            Post Type{" "}
+
+            <span
+              className="
+                text-red-500
+              "
+            >
+              *
+            </span>
           </label>
 
           <select
             name="type"
-            value={formData.type}
-            onChange={handleChange}
+            value={
+              formData.type
+            }
+            onChange={
+              handleChange
+            }
             required
             className="
               mt-2
+
               w-full
+
               rounded-xl
+
               border
               border-gray-200
+
               bg-white
+
               px-4
               py-3
+
+              text-[12px]
+              text-blue-950
+
               outline-none
+
+              transition
+
+              focus:border-yellow-400
               focus:ring-2
-              focus:ring-yellow-400
+              focus:ring-yellow-100
             "
           >
-            <option value="">Select Type</option>
+            <option value="">
+              Select Type
+            </option>
 
-            <option value="Announcement">Announcement</option>
+            <option value="Announcement">
+              Announcement
+            </option>
 
-            <option value="News">News</option>
+            <option value="News">
+              News
+            </option>
           </select>
         </div>
 
-        {/* TITLE */}
+        {/* =================================================
+            TITLE
+        ================================================= */}
 
-        <div className="mt-5">
+        <div
+          className="
+            mt-5
+          "
+        >
           <label
             className="
-              text-sm
+              text-[10px]
               font-black
               text-blue-950
             "
           >
-            Title <span className="text-red-500">*</span>
+            Title{" "}
+
+            <span
+              className="
+                text-red-500
+              "
+            >
+              *
+            </span>
           </label>
 
           <input
             type="text"
             name="title"
-            value={formData.title}
-            onChange={handleChange}
+            value={
+              formData.title
+            }
+            onChange={
+              handleChange
+            }
             placeholder="Enter post title"
             required
             className="
               mt-2
+
               w-full
+
               rounded-xl
+
               border
               border-gray-200
+
               px-4
               py-3
+
+              text-[12px]
+
               outline-none
+
+              transition
+
+              focus:border-yellow-400
               focus:ring-2
-              focus:ring-yellow-400
+              focus:ring-yellow-100
             "
           />
         </div>
 
-        {/* CONTENT */}
+        {/* =================================================
+            CONTENT
+        ================================================= */}
 
-        <div className="mt-5">
+        <div
+          className="
+            mt-5
+          "
+        >
           <label
             className="
-              text-sm
+              text-[10px]
               font-black
               text-blue-950
             "
           >
-            Content <span className="text-red-500">*</span>
+            Content{" "}
+
+            <span
+              className="
+                text-red-500
+              "
+            >
+              *
+            </span>
           </label>
 
           <textarea
             name="content"
-            value={formData.content}
-            onChange={handleChange}
+            value={
+              formData.content
+            }
+            onChange={
+              handleChange
+            }
             rows="7"
             placeholder="Write your announcement or news..."
             required
             className="
               mt-2
+
+              min-h-[170px]
               w-full
+
               resize-none
+
               rounded-xl
+
               border
               border-gray-200
+
               px-4
               py-3
+
+              text-[12px]
+              leading-5
+
               outline-none
+
+              transition
+
+              focus:border-yellow-400
               focus:ring-2
-              focus:ring-yellow-400
+              focus:ring-yellow-100
             "
           />
         </div>
 
-        {/* EVENT DATE */}
+        {/* =================================================
+            EVENT DATE
+        ================================================= */}
 
-        <div className="mt-5">
+        <div
+          className="
+            mt-5
+          "
+        >
           <label
             className="
-              text-sm
+              text-[10px]
               font-black
               text-blue-950
             "
           >
             Event Date{" "}
+
             <span
               className="
                 font-normal
@@ -481,34 +891,56 @@ export default function CreatePost() {
           <input
             type="date"
             name="date"
-            value={formData.date}
-            onChange={handleChange}
+            value={
+              formData.date
+            }
+            onChange={
+              handleChange
+            }
             className="
               mt-2
+
               w-full
+
               rounded-xl
+
               border
               border-gray-200
+
               px-4
               py-3
+
+              text-[12px]
+
               outline-none
+
+              transition
+
+              focus:border-yellow-400
               focus:ring-2
-              focus:ring-yellow-400
+              focus:ring-yellow-100
             "
           />
         </div>
 
-        {/* IMAGE */}
+        {/* =================================================
+            IMAGE
+        ================================================= */}
 
-        <div className="mt-6">
+        <div
+          className="
+            mt-6
+          "
+        >
           <label
             className="
-              text-sm
+              text-[10px]
               font-black
               text-blue-950
             "
           >
             Upload Image{" "}
+
             <span
               className="
                 font-normal
@@ -524,15 +956,23 @@ export default function CreatePost() {
               className="
                 mt-2
                 block
+
                 cursor-pointer
+
                 rounded-2xl
+
                 border-2
                 border-dashed
                 border-gray-300
+
                 bg-gray-50
+
                 p-7
+
                 text-center
+
                 transition
+
                 hover:border-yellow-400
                 hover:bg-yellow-50
               "
@@ -540,29 +980,42 @@ export default function CreatePost() {
               <input
                 type="file"
                 accept="image/jpeg,image/png,image/webp"
-                onChange={handleImage}
-                className="hidden"
+                onChange={
+                  handleImage
+                }
+                className="
+                  hidden
+                "
               />
 
               <div
                 className="
                   mx-auto
+
                   flex
                   h-12
                   w-12
+
                   items-center
                   justify-center
+
                   rounded-xl
+
                   bg-blue-950
+
                   text-yellow-400
                 "
               >
-                <MaterialIcon name="add_photo_alternate" />
+                <MaterialIcon
+                  name="add_photo_alternate"
+                />
               </div>
 
               <p
                 className="
                   mt-3
+
+                  text-[12px]
                   font-black
                   text-blue-950
                 "
@@ -573,31 +1026,41 @@ export default function CreatePost() {
               <p
                 className="
                   mt-1
-                  text-xs
+
+                  text-[9px]
                   text-gray-500
                 "
               >
-                JPG, PNG, or WEBP • Maximum 5 MB
+                JPG, PNG, or WEBP
+                • Maximum 5 MB
               </p>
             </label>
           ) : (
             <div
               className="
                 mt-2
+
                 overflow-hidden
+
                 rounded-2xl
+
                 border
                 border-gray-200
+
                 bg-gray-50
               "
             >
               <img
-                src={imagePreview}
+                src={
+                  imagePreview
+                }
                 alt="Post preview"
                 className="
                   max-h-[450px]
                   w-full
+
                   bg-gray-100
+
                   object-contain
                 "
               />
@@ -605,52 +1068,85 @@ export default function CreatePost() {
               <div
                 className="
                   flex
-                  items-center
-                  justify-between
+                  flex-col
+
                   gap-4
+
                   p-4
+
+                  sm:flex-row
+                  sm:items-center
+                  sm:justify-between
                 "
               >
-                <div className="min-w-0">
+                <div
+                  className="
+                    min-w-0
+                  "
+                >
                   <p
                     className="
                       truncate
+
+                      text-[11px]
                       font-black
                       text-blue-950
                     "
                   >
-                    {imageFile?.name}
+                    {
+                      imageFile?.name
+                    }
                   </p>
 
                   <p
                     className="
                       mt-1
-                      text-xs
+
+                      text-[9px]
+                      leading-4
                       text-gray-500
                     "
                   >
-                    This image will also be visible to the Administrator during
-                    review.
+                    This image will
+                    also be visible
+                    to the
+                    Administrator
+                    during review.
                   </p>
                 </div>
 
                 <button
                   type="button"
-                  onClick={removeImage}
+                  onClick={
+                    removeImage
+                  }
                   className="
                     flex
                     shrink-0
                     items-center
+                    justify-center
                     gap-2
+
                     rounded-xl
+
                     bg-red-50
+
                     px-4
                     py-2
+
+                    text-[10px]
                     font-bold
                     text-red-600
+
+                    transition
+
+                    hover:bg-red-100
                   "
                 >
-                  <MaterialIcon name="delete" />
+                  <MaterialIcon
+                    name="delete"
+                  />
+
                   Remove
                 </button>
               </div>
@@ -658,69 +1154,133 @@ export default function CreatePost() {
           )}
         </div>
 
-        {/* REVIEW INFORMATION */}
+        {/* =================================================
+            REVIEW INFORMATION
+        ================================================= */}
 
         <div
           className="
             mt-6
+
             flex
             items-start
             gap-3
+
             rounded-2xl
+
             border
             border-blue-100
+
             bg-blue-50
+
             p-4
+
             text-blue-800
           "
         >
-          <MaterialIcon name="admin_panel_settings" />
+          <div
+            className="
+              flex
+              h-9
+              w-9
+              shrink-0
+
+              items-center
+              justify-center
+
+              rounded-xl
+
+              bg-blue-100
+            "
+          >
+            <MaterialIcon
+              name="admin_panel_settings"
+            />
+          </div>
 
           <div>
-            <p className="font-black">Administrator Review</p>
+            <p
+              className="
+                text-[10px]
+                font-black
+              "
+            >
+              Administrator Review
+            </p>
 
             <p
               className="
                 mt-1
-                text-sm
-                leading-6
+
+                text-[9px]
+                leading-5
               "
             >
-              After submission, this post will be sent to the Administrator. It
-              will only appear on the Student Homepage after approval.
+              After submission,
+              this post will be
+              sent to the
+              Administrator. It
+              will only appear on
+              the Student
+              Homepage after
+              approval.
             </p>
           </div>
         </div>
 
-        {/* SUBMIT */}
+        {/* =================================================
+            SUBMIT
+        ================================================= */}
 
         <button
           type="submit"
-          disabled={submitting}
+          disabled={
+            submitting
+          }
           className="
             mt-7
+
             flex
             w-full
+
             items-center
             justify-center
             gap-2
+
             rounded-xl
+
             bg-gradient-to-r
             from-yellow-300
             to-yellow-500
-            py-4
+
+            py-3.5
+
+            text-[11px]
             font-black
             text-blue-950
+
             shadow
+
             transition
-            hover:scale-[1.01]
+
+            hover:from-yellow-400
+            hover:to-yellow-500
+
             disabled:cursor-not-allowed
             disabled:opacity-60
           "
         >
-          <MaterialIcon name={submitting ? "hourglass_top" : "send"} />
+          <MaterialIcon
+            name={
+              submitting
+                ? "hourglass_top"
+                : "send"
+            }
+          />
 
-          {submitting ? "Submitting..." : "Submit for Admin Review"}
+          {submitting
+            ? "Submitting..."
+            : "Submit for Admin Review"}
         </button>
       </motion.form>
     </div>

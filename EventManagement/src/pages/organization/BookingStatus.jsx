@@ -176,7 +176,10 @@ export default function BookingStatus() {
     } catch (err) {
       console.error("LOAD BOOKING STATUS ERROR:", err);
 
-      setError(err.response?.data?.message || "Unable to load your bookings.");
+      setError(
+        err.response?.data?.message ||
+          "Unable to load your bookings.",
+      );
     } finally {
       setLoading(false);
     }
@@ -195,19 +198,24 @@ export default function BookingStatus() {
       all: bookings.length,
 
       pending: bookings.filter(
-        (booking) => normalizeStatus(booking.status) === "pending",
+        (booking) =>
+          normalizeStatus(booking.status) === "pending",
       ).length,
 
       approved: bookings.filter(
-        (booking) => normalizeStatus(booking.status) === "approved",
+        (booking) =>
+          normalizeStatus(booking.status) === "approved",
       ).length,
 
       rejected: bookings.filter(
-        (booking) => normalizeStatus(booking.status) === "rejected",
+        (booking) =>
+          normalizeStatus(booking.status) === "rejected",
       ).length,
 
       cancelled: bookings.filter((booking) =>
-        ["cancelled", "canceled"].includes(normalizeStatus(booking.status)),
+        ["cancelled", "canceled"].includes(
+          normalizeStatus(booking.status),
+        ),
       ).length,
     }),
 
@@ -314,6 +322,10 @@ export default function BookingStatus() {
   return (
     <div
       className="
+        mx-auto
+        w-full
+        max-w-[1120px]
+
         space-y-5
       "
     >
@@ -381,8 +393,8 @@ export default function BookingStatus() {
             text-blue-100
           "
         >
-          Track your venue reservations, search your bookings, and quickly check
-          their current status.
+          Track your venue reservations, search your bookings,
+          and quickly check their current status.
         </p>
       </motion.section>
 
@@ -460,9 +472,17 @@ export default function BookingStatus() {
           lg:grid-cols-5
         "
       >
-        <StatCard title="Total" value={counts.all} icon="event_note" />
+        <StatCard
+          title="Total"
+          value={counts.all}
+          icon="event_note"
+        />
 
-        <StatCard title="Pending" value={counts.pending} icon="schedule" />
+        <StatCard
+          title="Pending"
+          value={counts.pending}
+          icon="schedule"
+        />
 
         <StatCard
           title="Approved"
@@ -470,7 +490,11 @@ export default function BookingStatus() {
           icon="check_circle"
         />
 
-        <StatCard title="Rejected" value={counts.rejected} icon="cancel" />
+        <StatCard
+          title="Rejected"
+          value={counts.rejected}
+          icon="cancel"
+        />
 
         <StatCard
           title="Cancelled"
@@ -601,8 +625,13 @@ export default function BookingStatus() {
           >
             <MaterialIcon
               name="refresh"
-              className={loading ? "animate-spin text-[17px]" : "text-[17px]"}
+              className={
+                loading
+                  ? "animate-spin text-[17px]"
+                  : "text-[17px]"
+              }
             />
+
             Refresh
           </button>
         </div>
@@ -621,60 +650,63 @@ export default function BookingStatus() {
           "
         >
           {filters.map((filter) => {
-            const active = statusFilter === filter.value;
+            const active =
+              statusFilter === filter.value;
 
             return (
               <button
                 key={filter.value}
                 type="button"
                 aria-pressed={active}
-                onClick={() => setStatusFilter(filter.value)}
+                onClick={() =>
+                  setStatusFilter(filter.value)
+                }
                 className={`
-                    flex
-                    items-center
-                    gap-2
+                  flex
+                  items-center
+                  gap-2
 
-                    rounded-xl
+                  rounded-xl
 
-                    px-3
-                    py-2
+                  px-3
+                  py-2
 
-                    text-[9px]
-                    font-black
+                  text-[9px]
+                  font-black
 
-                    transition
+                  transition
 
-                    ${
-                      active
-                        ? "bg-blue-950 text-white"
-                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                    }
-                  `}
+                  ${
+                    active
+                      ? "bg-blue-950 text-white"
+                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  }
+                `}
               >
                 <MaterialIcon
                   name={filter.icon}
                   className="
-                      text-[17px]
-                    "
+                    text-[17px]
+                  "
                 />
 
                 {filter.label}
 
                 <span
                   className={`
-                      rounded-full
+                    rounded-full
 
-                      px-2
-                      py-0.5
+                    px-2
+                    py-0.5
 
-                      text-[8px]
+                    text-[8px]
 
-                      ${
-                        active
-                          ? "bg-yellow-400 text-blue-950"
-                          : "bg-white text-gray-500"
-                      }
-                    `}
+                    ${
+                      active
+                        ? "bg-yellow-400 text-blue-950"
+                        : "bg-white text-gray-500"
+                    }
+                  `}
                 >
                   {filter.count}
                 </span>
@@ -718,8 +750,8 @@ export default function BookingStatus() {
               text-gray-500
             "
           >
-            Showing <strong>{filteredBookings.length}</strong> of{" "}
-            <strong>{bookings.length}</strong> booking(s)
+            Showing <strong>{filteredBookings.length}</strong>{" "}
+            of <strong>{bookings.length}</strong> booking(s)
           </p>
         </div>
 
@@ -761,6 +793,7 @@ export default function BookingStatus() {
                 text-[17px]
               "
             />
+
             Clear Filters
           </button>
         )}
@@ -844,7 +877,9 @@ export default function BookingStatus() {
           title="No Bookings Yet"
           text="Once you submit a venue reservation, you can monitor its status here."
           buttonText="Create Booking"
-          onClick={() => navigate("/organization/booking")}
+          onClick={() =>
+            navigate("/organization/booking")
+          }
         />
       )}
     </div>
@@ -855,7 +890,11 @@ export default function BookingStatus() {
    STAT CARD
 ===================================================== */
 
-function StatCard({ title, value, icon }) {
+function StatCard({
+  title,
+  value,
+  icon,
+}) {
   return (
     <div
       className="
@@ -937,10 +976,19 @@ function StatCard({ title, value, icon }) {
    BOOKING CARD
 ===================================================== */
 
-function BookingCard({ booking, index }) {
-  const statusValue = normalizeStatus(booking.status);
+function BookingCard({
+  booking,
+  index,
+}) {
+  const statusValue =
+    normalizeStatus(
+      booking.status,
+    );
 
-  const status = getStatusMeta(statusValue);
+  const status =
+    getStatusMeta(
+      statusValue,
+    );
 
   return (
     <motion.article
@@ -955,7 +1003,10 @@ function BookingCard({ booking, index }) {
         y: 0,
       }}
       transition={{
-        delay: Math.min(index * 0.04, 0.2),
+        delay: Math.min(
+          index * 0.04,
+          0.2,
+        ),
       }}
       className="
         overflow-hidden
@@ -1008,7 +1059,8 @@ function BookingCard({ booking, index }) {
               text-blue-950
             "
           >
-            {booking.eventName || "Event Booking"}
+            {booking.eventName ||
+              "Event Booking"}
           </h2>
 
           <p
@@ -1026,7 +1078,9 @@ function BookingCard({ booking, index }) {
                 text-blue-700
               "
             >
-              {referenceOf(booking)}
+              {referenceOf(
+                booking,
+              )}
             </span>
           </p>
         </div>
@@ -1082,24 +1136,38 @@ function BookingCard({ booking, index }) {
             xl:grid-cols-4
           "
         >
-          <InfoCard icon="location_on" label="Venue" value={booking.venue} />
+          <InfoCard
+            icon="location_on"
+            label="Venue"
+            value={booking.venue}
+          />
 
           <InfoCard
             icon="calendar_month"
             label="Event Date"
-            value={formatDate(booking.eventDate)}
+            value={formatDate(
+              booking.eventDate,
+            )}
           />
 
           <InfoCard
             icon="schedule"
             label="Time"
-            value={`${booking.startTime || "--"} - ${booking.endTime || "--"}`}
+            value={`${
+              booking.startTime ||
+              "--"
+            } - ${
+              booking.endTime ||
+              "--"
+            }`}
           />
 
           <InfoCard
             icon="category"
             label="Event Type"
-            value={booking.eventType}
+            value={
+              booking.eventType
+            }
           />
         </div>
 
@@ -1159,7 +1227,9 @@ function BookingCard({ booking, index }) {
                 text-yellow-800
               "
             >
-              {booking.adminRemarks}
+              {
+                booking.adminRemarks
+              }
             </p>
           </div>
         )}
@@ -1218,6 +1288,7 @@ function BookingCard({ booking, index }) {
                   text-[18px]
                 "
               />
+
               Booking Progress
             </span>
 
@@ -1256,30 +1327,50 @@ function BookingCard({ booking, index }) {
               <TimelineItem
                 title="Administrator Review"
                 description={
-                  statusValue === "pending"
+                  statusValue ===
+                  "pending"
                     ? "Your request is currently waiting for administrator review."
                     : "The administrator has completed the review."
                 }
-                state={statusValue === "pending" ? "active" : "completed"}
+                state={
+                  statusValue ===
+                  "pending"
+                    ? "active"
+                    : "completed"
+                }
               />
 
               <TimelineItem
                 title="Final Decision"
                 description={
-                  statusValue === "approved"
+                  statusValue ===
+                  "approved"
                     ? "Your booking has been approved."
-                    : statusValue === "rejected"
+                    : statusValue ===
+                        "rejected"
                       ? "Your booking request has been rejected."
-                      : ["cancelled", "canceled"].includes(statusValue)
+                      : [
+                            "cancelled",
+                            "canceled",
+                          ].includes(
+                            statusValue,
+                          )
                         ? "This booking has been cancelled."
                         : "The final decision will appear here after administrator review."
                 }
                 state={
-                  statusValue === "approved"
+                  statusValue ===
+                  "approved"
                     ? "approved"
-                    : statusValue === "rejected"
+                    : statusValue ===
+                        "rejected"
                       ? "rejected"
-                      : ["cancelled", "canceled"].includes(statusValue)
+                      : [
+                            "cancelled",
+                            "canceled",
+                          ].includes(
+                            statusValue,
+                          )
                         ? "cancelled"
                         : "waiting"
                 }
@@ -1296,7 +1387,11 @@ function BookingCard({ booking, index }) {
    INFO CARD
 ===================================================== */
 
-function InfoCard({ icon, label, value }) {
+function InfoCard({
+  icon,
+  label,
+  value,
+}) {
   return (
     <div
       className="
@@ -1347,7 +1442,8 @@ function InfoCard({ icon, label, value }) {
           text-blue-950
         "
       >
-        {value || "Not Provided"}
+        {value ||
+          "Not Provided"}
       </p>
     </div>
   );
@@ -1357,46 +1453,58 @@ function InfoCard({ icon, label, value }) {
    TIMELINE ITEM
 ===================================================== */
 
-function TimelineItem({ title, description, state }) {
+function TimelineItem({
+  title,
+  description,
+  state,
+}) {
   const states = {
     completed: {
       icon: "check",
 
-      style: "bg-green-500 text-white",
+      style:
+        "bg-green-500 text-white",
     },
 
     active: {
       icon: "schedule",
 
-      style: "bg-yellow-400 text-blue-950",
+      style:
+        "bg-yellow-400 text-blue-950",
     },
 
     approved: {
       icon: "check",
 
-      style: "bg-green-500 text-white",
+      style:
+        "bg-green-500 text-white",
     },
 
     rejected: {
       icon: "close",
 
-      style: "bg-red-500 text-white",
+      style:
+        "bg-red-500 text-white",
     },
 
     cancelled: {
       icon: "event_busy",
 
-      style: "bg-orange-500 text-white",
+      style:
+        "bg-orange-500 text-white",
     },
 
     waiting: {
       icon: "more_horiz",
 
-      style: "bg-gray-300 text-gray-600",
+      style:
+        "bg-gray-300 text-gray-600",
     },
   };
 
-  const current = states[state] || states.waiting;
+  const current =
+    states[state] ||
+    states.waiting;
 
   return (
     <div
@@ -1420,7 +1528,9 @@ function TimelineItem({ title, description, state }) {
         `}
       >
         <MaterialIcon
-          name={current.icon}
+          name={
+            current.icon
+          }
           className="
             text-[16px]
           "
@@ -1462,7 +1572,13 @@ function TimelineItem({ title, description, state }) {
    EMPTY STATE
 ===================================================== */
 
-function EmptyState({ icon, title, text, buttonText, onClick }) {
+function EmptyState({
+  icon,
+  title,
+  text,
+  buttonText,
+  onClick,
+}) {
   return (
     <div
       className="

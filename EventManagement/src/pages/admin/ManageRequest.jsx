@@ -583,69 +583,82 @@ export default function ManageRequest() {
   =================================================== */
 
   return (
-    <>
-      <div
-        className="
-          space-y-6
-        "
-      >
+  <>
+    <div
+      className="
+        mx-auto
+        w-full
+        max-w-[1120px]
+
+        space-y-5
+      "
+    >
         {/* =============================================
             PAGE HEADER
         ============================================= */}
 
         <motion.div
-          initial={{
-            opacity: 0,
-            y: 20,
-          }}
-          animate={{
-            opacity: 1,
-            y: 0,
-          }}
-          className="
-            rounded-[20px]
-            bg-gradient-to-r
-            from-[#020617]
-            via-[#001F3F]
-            to-[#064477]
-            px-6
-            py-5
-            text-white
-          "
-        >
-          <p
-            className="
-              text-[9px]
-              font-black
-              uppercase
-              tracking-[0.16em]
-              text-yellow-400
-            "
-          >
-            Administrator
-          </p>
+  initial={{
+    opacity: 0,
+    y: 20,
+  }}
+  animate={{
+    opacity: 1,
+    y: 0,
+  }}
+  className="
+    rounded-[22px]
 
-          <h1
-            className="
-              mt-1.5
-              text-[26px]
-              font-black
-            "
-          >
-            Manage Requests
-          </h1>
+    bg-gradient-to-r
+    from-[#020617]
+    via-[#00254d]
+    to-[#064477]
 
-          <p
-            className="
-              mt-1.5
-              text-[11px]
-              text-blue-100
-            "
-          >
-            Review organization requests and send feedback directly to the
-            organization.
-          </p>
-        </motion.div>
+    px-6
+    py-6
+
+    text-white
+  "
+>
+  <p
+    className="
+      text-[9px]
+      font-black
+      uppercase
+      tracking-[0.16em]
+
+      text-yellow-400
+    "
+  >
+    Administrator
+  </p>
+
+  <h1
+    className="
+      mt-2
+
+      text-[26px]
+      font-black
+    "
+  >
+    Manage Requests
+  </h1>
+
+  <p
+    className="
+      mt-2
+
+      max-w-2xl
+
+      text-[11px]
+      leading-5
+      text-blue-100
+    "
+  >
+    Review organization requests and send feedback directly to the
+    organization.
+  </p>
+</motion.div>
 
         {/* =============================================
             SUCCESS MESSAGE

@@ -586,11 +586,15 @@ export default function AdminDashboard() {
   ===================================================== */
 
   return (
-    <div
-      className="
-        space-y-6
-      "
-    >
+  <div
+    className="
+      mx-auto
+      w-full
+      max-w-[1120px]
+
+      space-y-5
+    "
+  >
       {/* =================================================
           ERROR
       ================================================= */}
@@ -666,68 +670,66 @@ export default function AdminDashboard() {
       ================================================= */}
 
       <motion.div
-        initial={{
-          opacity: 0,
-          y: 20,
-        }}
-        animate={{
-          opacity: 1,
-          y: 0,
-        }}
-        className="
-          rounded-3xl
+  initial={{
+    opacity: 0,
+    y: 20,
+  }}
+  animate={{
+    opacity: 1,
+    y: 0,
+  }}
+  className="
+    rounded-[22px]
 
-          bg-gradient-to-r
-          from-[#020617]
-          via-[#001F3F]
-          to-[#003B7A]
+    bg-gradient-to-r
+    from-[#020617]
+    via-[#00254d]
+    to-[#064477]
 
-          p-6
+    px-6
+    py-6
 
-          text-white
+    text-white
+  "
+>
+  <p
+    className="
+      text-[9px]
+      font-black
+      uppercase
+      tracking-[0.16em]
 
-          sm:p-8
-        "
-      >
-        <p
-          className="
-            text-xs
-            font-black
-            uppercase
-            tracking-[0.2em]
+      text-yellow-400
+    "
+  >
+    Administrator Portal
+  </p>
 
-            text-yellow-400
-          "
-        >
-          Administrator Portal
-        </p>
+  <h1
+    className="
+      mt-2
 
-        <h1
-          className="
-            mt-3
+      text-[26px]
+      font-black
+    "
+  >
+    Admin Dashboard
+  </h1>
 
-            text-3xl
-            font-black
+  <p
+    className="
+      mt-2
 
-            sm:text-4xl
-          "
-        >
-          Admin Dashboard
-        </h1>
+      max-w-2xl
 
-        <p
-          className="
-            mt-3
-
-            text-sm
-            text-gray-200
-          "
-        >
-          Monitor and manage the
-          NUnified Event Management
-          System.
-        </p>
-      </motion.div>
+      text-[11px]
+      leading-5
+      text-blue-100
+    "
+  >
+    Monitor and manage the NUnified Event Management System.
+  </p>
+</motion.div>
 
       {/* =================================================
           STATISTICS
